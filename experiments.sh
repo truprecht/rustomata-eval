@@ -1,29 +1,14 @@
 #!/bin/bash
-set -Ceux
+set -Ceu
 
-# max sentence length
-MAXLENGTH=1
+# read experiments.conf, if not present read template
 
-# paths
-TMP="/tmp/rustomata-cs"
-RESULTS="results"
-NEGRA="../negra/negra-corpus.utf"
-
-# tools
-RUSTOMATA="$HOME/rustomata/target/release/rustomata"
-VANDA="$HOME/.local/bin/vanda"
-RPARSE="java -jar rparse/rparse.jar"
-GF="gf/.cabal-sandbox/bin/gf"
-DISCO="discodop"
-PYTHON="python"
-
-# approximation parameters
-RUSTOMATA_D_CANDIDATES="100"
-RUSTOMATA_D_BEAM="10000"
-RUSTOMATA_BEAMS=("100" "1000" "10000" "100000")
-RUSTOMATA_CANDIDATES=("1" "10" "100" "1000")
-RPARSE_TIMEOUT="30"
-
+if [ -f experiments.conf ]; then
+    source experiments.conf
+else
+    (>&2 echo "experiments.conf not present, using defaults in templates/experiments.conf.example")
+    source templates/experiments.conf.example
+fi
 
 # this section contains the top-level experiment functions for each parser,
 # they will create tsv files for the parse time of each sentence in 
@@ -39,11 +24,48 @@ function gf_nfcv {
 }
 
 function discodop_nfcv {
-    echo "warning: not implemented"
+    assert_folder_structure
+    assert_tfcv_negra_files
+    assert_tfcv_discodop_files
+
+    for fold in {1..9}; do
+        $DISCO runexp "$TMP/grammars/discodop-$fold.prm" &> /dev/null \
+            || fail_and_cleanup "results"
+        
+        tail -n+2 "$TMP/grammars/discodop-$fold/stats.tsv" >> "$TMP/results/discodop-times.txt"
+        tail -n+2 "$TMP/grammars/discodop-$fold/plcfrs.export" >> "$TMP/results/discodop-predictions.export"
+    done
+        
+    $DISCO eval "$TMP/negra/test-1-9.export" "$TMP/results/discodop-predictions.export" \
+         > "$RESULTS/discodop-tfcv-scores.txt" \
+        || fail_and_cleanup "results"
+    
+    $PYTHON averages.py mean 3 1 < "$TMP/results/discodop-times.txt" > "$RESULTS/discodop-times-mean.csv" \
+        || fail_and_cleanup "results"
+    $PYTHON averages.py median 3 1 < "$TMP/results/discodop-times.txt" > "$RESULTS/discodop-times-median.csv" \
+        || fail_and_cleanup "results"
 }
 
 function rustomata_nfcv {
-    echo "warning: not implemented"
+    assert_folder_structure
+    assert_tfcv_negra_files
+    assert_tfcv_rustomata_files
+
+    for fold in {1..9}; do
+        $RUSTOMATA csparsing parse "$TMP/grammars/train-$fold.cs" --beam=$RUSTOMATA_D_BEAM --candidates=$RUSTOMATA_D_CANDIDATES --with-pos --with-lines --debug < "$TMP/negra/test-$fold.sent" \
+            2>> "$TMP/results/rustomata-times.csv" \
+             >> "$TMP/results/rustomata-predictions.export" \
+             || fail_and_cleanup "results"
+    done
+        
+    $DISCO eval "$TMP/negra/test-1-9.export" "$TMP/results/rustomata-predictions.export" \
+        >> $RESULTS/rustomata-scores.txt \
+        || fail_and_cleanup "results"
+    
+    $PYTHON averages.py mean 5 1 < "$TMP/results/rustomata-times.csv" >> "$RESULTS/rustomata-times-mean.csv" \
+        || fail_and_cleanup "results"
+    $PYTHON averages.py median 5 1 < "$TMP/results/rustomata-times.csv" >> "$RESULTS/rustomata-times-median.csv" \
+        || fail_and_cleanup "results"
 }
 
 # this section contains the function to evaluate the meta-parameters for
@@ -91,17 +113,22 @@ function assert_folder_structure {
 }
 
 function assert_tfcv_negra_files {
-    if ! [ -f $TMP/negra/train-0.export ]; then
+    if ! [ -f $TMP/negra/test-1-9.export ]; then
         echo "#FORMAT 3" > $TMP/negra/negra-corpus-low-punctuation.export
         $DISCO treetransforms --punct=move $NEGRA >> $TMP/negra/negra-corpus-low-punctuation.export
         $PYTHON tfcv.py $TMP/negra/negra-corpus-low-punctuation.export --out-prefix=$TMP/negra --max-length=$MAXLENGTH --fix-discodop-transformation=true
+
+        echo "#FORMAT 3" > "$TMP/negra/test-1-9.export"
+        for fold in {1..9}; do
+            tail -n+2 "$TMP/negra/test-$fold.export" >> "$TMP/negra/test-1-9.export"
+        done
     fi
 }
 
 function assert_tfcv_rustomata_files {
-    if [ -z $1 ]; then
-        for fold in {0 .. 10}; do
-            assert_assert_rustomata_files $fold
+    if ! (( $# == 1 )); then
+        for fold in {0..9}; do
+            assert_tfcv_rustomata_files $fold
         done
     else
         if ! [ -f $TMP/grammars/train-$1.cs ]; then
@@ -111,20 +138,42 @@ function assert_tfcv_rustomata_files {
     fi
 }
 
-function fail_and_cleanup {
-    if [ -d "$RESULTS" ]; then
-        rm -r $RESULTS
-    fi
+function assert_tfcv_discodop_files {
+    for fold in {0..9}; do
+        if ! [ -d "$TMP/grammars/discodop-train-$fold" ]; then
+            sed "s:{TRAIN}:$TMP/negra/train-$fold.export:" templates/discodop.prm \
+                | sed "s:{TEST}:$TMP/negra/test-$fold.export:" \
+                | sed "s:{MAXLENGTH}:$MAXLENGTH:" \
+                | sed "s:{EVALFILE}:$DISCODOP_EVAL:" > "$TMP/grammars/discodop-$fold.prm"
+        fi
+    done
+}
 
-    if ! [ -z "$1" ] && [ -d "$TMP/$1" ]; then
-        rm -r "$TMP/$1"
-    fi
+function fail_and_cleanup {
+    # if [ -d "$RESULTS" ]; then
+    #     $TRASH $RESULTS
+    # fi
+
+    # if (( $# == 1 )) && [ -d "$TMP/$1" ]; then
+    #     $TRASH "$TMP/$1"
+    # fi
 
     exit 1
 }
 
+
 # main script that runs the procedures for given parameters
 
-if [ -z $1 ] || ! $1; then
-    echo "use $0 (((rparse|gf|discodop|rustomata)_nfcv)|rustomata_ofcv)";
+if (( $# > 1 )) && [[ "$2" =~ ^--clean ]]; then
+    if [ -d "$RESULTS" ]; then $TRASH "$RESULTS"; fi
+    if [ -d "$TMP/results" ]; then $TRASH "$TMP/results"; fi
+    if [[ "$2" =~ ^--clean-all$ ]]; then
+        if [ -d "$TMP/grammars" ]; then $TRASH "$TMP/grammars"; fi
+        if [ -d "$TMP/negra" ]; then $TRASH "$TMP/negra"; fi
+
+    fi
+fi
+
+if (( $# < 1)) || ! $1; then
+    echo "use $0 (((rparse|gf|discodop|rustomata)_nfcv)|rustomata_ofcv) [--clean-[all]]";
 fi

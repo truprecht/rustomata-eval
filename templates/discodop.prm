@@ -1,0 +1,6 @@
+stages=[ dict(name='plcfrs', mode='plcfrs') ],
+traincorpus=dict( path='{TRAIN}', encoding='utf-8', maxwords=1000, numsents=20000 ),
+testcorpus=dict( path='{TEST}', encoding='utf-8', maxwords={MAXLENGTH}, skiptrain=False ),
+postagging=None,
+binarization=dict( method='default', factor='right', h=1, v=1 ),
+evalparam='{EVALFILE}'

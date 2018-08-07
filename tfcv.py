@@ -84,9 +84,9 @@ if __name__ == "__main__":
             
             with open("%strain-%d.sent" %(prefix, fold), "w") as trainsents:
                 trainsents.write(
-                    "\n".join([id_pattern.search(tree)[1] + "\t" + " ".join(["/".join(wp) for wp in word_pos_pattern.findall(tree)]) for tree in train])
+                    "\n".join([id_pattern.search(tree).group(1) + "\t" + " ".join(["/".join(wp) for wp in word_pos_pattern.findall(tree)]) for tree in train])
                 )
             with open("%stest-%d.sent" %(prefix, fold), "w") as testsents:
                 testsents.write(
-                    "\n".join([id_pattern.search(tree)[1] + "\t" + " ".join(["/".join(wp) for wp in word_pos_pattern.findall(tree)]) for tree in test if len(list(tokens(tree))) <= max_length])
+                    "\n".join([id_pattern.search(tree).group(1)+ "\t" + " ".join(["/".join(wp) for wp in word_pos_pattern.findall(tree)]) for tree in test if len(list(tokens(tree))) <= max_length])
                 )

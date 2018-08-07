@@ -6,8 +6,8 @@ if __name__ == "__main__":
     values = {}
     for line in stdin:
         line = line.split()
-        try: values[int(line[int(argv[3])])].append(int(line[int(argv[2])]))
-        except: values[int(line[int(argv[3])])] = [int(line[int(argv[2])])]
+        try: values[int(line[int(argv[3])])].append(float(line[int(argv[2])]))
+        except: values[int(line[int(argv[3])])] = [float(line[int(argv[2])])]
 
     results = []
     for key in range(1, sorted(list(values.keys()))[-1] + 1):

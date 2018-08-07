@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# max sentence length
+MAXLENGTH=1
+
+# paths
+TMP="/tmp/rustomata-cs-eval"
+RESULTS="results"
+NEGRA="../negra/negra-corpus.utf"
+
+# tools
+RUSTOMATA="$HOME/rustomata/target/release/rustomata"
+VANDA="$HOME/.local/bin/vanda"
+RPARSE="java -jar rparse/rparse.jar"
+GF="gf/.cabal-sandbox/bin/gf"
+DISCO="discodop"
+PYTHON="python"
+
+# approximation and other parameters
+RUSTOMATA_D_CANDIDATES="100"
+RUSTOMATA_D_BEAM="10000"
+RUSTOMATA_BEAMS=("100" "1000" "10000" "100000")
+RUSTOMATA_CANDIDATES=("1" "10" "100" "1000")
+RPARSE_TIMEOUT="30"
+DISCODOP_EVAL="templates/discodop-eval.prm"
+
+# command to remove old files with $TRASH <file>
+TRASH="rm -rf"
