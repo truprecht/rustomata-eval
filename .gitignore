@@ -1,3 +1,6 @@
 results
 python
 experiments.conf
+*.ipynb
+.ipynb_checkpoints
+.pytest_cache

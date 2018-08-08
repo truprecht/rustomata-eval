@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # max sentence length
-MAXLENGTH=1
+MAXLENGTH=20
 
 # paths
 TMP="/tmp/rustomata-cs-eval"
 RESULTS="results"
-NEGRA="../negra/negra-corpus.utf"
+NEGRA="$HOME/negra/negra-corpus.utf"
 
 # tools
 RUSTOMATA="$HOME/rustomata/target/release/rustomata"

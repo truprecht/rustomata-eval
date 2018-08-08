@@ -40,9 +40,9 @@ function discodop_nfcv {
          > "$RESULTS/discodop-tfcv-scores.txt" \
         || fail_and_cleanup "results"
     
-    $PYTHON averages.py mean 3 1 < "$TMP/results/discodop-times.txt" > "$RESULTS/discodop-times-mean.csv" \
+    $PYTHON scripts/averages.py mean 3 1 < "$TMP/results/discodop-times.txt" > "$RESULTS/discodop-times-mean.csv" \
         || fail_and_cleanup "results"
-    $PYTHON averages.py median 3 1 < "$TMP/results/discodop-times.txt" > "$RESULTS/discodop-times-median.csv" \
+    $PYTHON scripts/averages.py median 3 1 < "$TMP/results/discodop-times.txt" > "$RESULTS/discodop-times-median.csv" \
         || fail_and_cleanup "results"
 }
 
@@ -54,7 +54,7 @@ function rustomata_nfcv {
     for fold in {1..9}; do
         $RUSTOMATA csparsing parse "$TMP/grammars/train-$fold.cs" --beam=$RUSTOMATA_D_BEAM --candidates=$RUSTOMATA_D_CANDIDATES --with-pos --with-lines --debug < "$TMP/negra/test-$fold.sent" \
             2>> "$TMP/results/rustomata-times.csv" \
-             >> "$TMP/results/rustomata-predictions.export" \
+              | sed 's:_[[:digit:]]::' >> "$TMP/results/rustomata-predictions.export" \
              || fail_and_cleanup "results"
     done
         
@@ -62,9 +62,9 @@ function rustomata_nfcv {
         >> $RESULTS/rustomata-scores.txt \
         || fail_and_cleanup "results"
     
-    $PYTHON averages.py mean 5 1 < "$TMP/results/rustomata-times.csv" >> "$RESULTS/rustomata-times-mean.csv" \
+    $PYTHON scripts/averages.py mean 5 1 < "$TMP/results/rustomata-times.csv" >> "$RESULTS/rustomata-times-mean.csv" \
         || fail_and_cleanup "results"
-    $PYTHON averages.py median 5 1 < "$TMP/results/rustomata-times.csv" >> "$RESULTS/rustomata-times-median.csv" \
+    $PYTHON scripts/averages.py median 5 1 < "$TMP/results/rustomata-times.csv" >> "$RESULTS/rustomata-times-median.csv" \
         || fail_and_cleanup "results"
 }
 
@@ -81,7 +81,7 @@ function rustomata_ofcv {
         for cans in ${RUSTOMATA_CANDIDATES[*]}; do
             $RUSTOMATA csparsing parse $TMP/grammars/train-0.cs --beam=$beam --candidates=$cans --with-pos --with-lines --debug < $TMP/negra/test-0.sent \
                 2> $TMP/results/rustomata-ofcv-$beam-$cans-times.csv \
-                 > $TMP/results/rustomata-ofcv-$beam-$cans-predictions.export \
+                 | sed 's:_[[:digit:]]::' > $TMP/results/rustomata-ofcv-$beam-$cans-predictions.export \
                 || fail_and_cleanup "results"
             
             echo -ne "$beam\t$cans\t" >> $RESULTS/rustomata-ofcv-scores.txt
@@ -93,9 +93,9 @@ function rustomata_ofcv {
             
             echo -ne "$beam\t$cans\t" >> $RESULTS/rustomata-ofcv-times-mean.csv
             echo -ne "$beam\t$cans\t" >> $RESULTS/rustomata-ofcv-times-median.csv
-            $PYTHON averages.py mean 5 1 < $TMP/results/rustomata-ofcv-$beam-$cans-times.csv >> $RESULTS/rustomata-ofcv-times-mean.csv \
+            $PYTHON scripts/averages.py mean 5 1 < $TMP/results/rustomata-ofcv-$beam-$cans-times.csv >> $RESULTS/rustomata-ofcv-times-mean.csv \
                 || fail_and_cleanup "results"
-            $PYTHON averages.py median 5 1 < $TMP/results/rustomata-ofcv-$beam-$cans-times.csv >> $RESULTS/rustomata-ofcv-times-median.csv \
+            $PYTHON scripts/averages.py median 5 1 < $TMP/results/rustomata-ofcv-$beam-$cans-times.csv >> $RESULTS/rustomata-ofcv-times-median.csv \
                 || fail_and_cleanup "results"
         done
     done
@@ -116,7 +116,7 @@ function assert_tfcv_negra_files {
     if ! [ -f $TMP/negra/test-1-9.export ]; then
         echo "#FORMAT 3" > $TMP/negra/negra-corpus-low-punctuation.export
         $DISCO treetransforms --punct=move $NEGRA >> $TMP/negra/negra-corpus-low-punctuation.export
-        $PYTHON tfcv.py $TMP/negra/negra-corpus-low-punctuation.export --out-prefix=$TMP/negra --max-length=$MAXLENGTH --fix-discodop-transformation=true
+        $PYTHON scripts/tfcv.py $TMP/negra/negra-corpus-low-punctuation.export --out-prefix=$TMP/negra --max-length=$MAXLENGTH --fix-discodop-transformation=true
 
         echo "#FORMAT 3" > "$TMP/negra/test-1-9.export"
         for fold in {1..9}; do
