@@ -16,11 +16,46 @@ fi
 # <RESULTS>/<parser>-scores.txt 
 
 function rparse_nfcv {
-    echo "warning: not implemented"
+    assert_folder_structure
+    assert_tfcv_negra_files
+    assert_tfcv_rparse_files
+
+    for fold in {1..9}; do
+        $RPARSE -doParse -test "$TMP/negra/test-$fold.export" -testFormat export -readModel "$TMP/grammars/rparse-train-$fold" -timeout "$RPARSE_TIMEOUT" \
+             > >($PYTHON scripts/fill_sentence_id.py "$TMP/negra/test-$fold.sent" | $PYTHON scripts/fill_noparses.py "$TMP/negra/test-$fold.sent" >> "$TMP/results/rparse-predictions.export")  \
+            2> >($PYTHON scripts/parse_rparse_output.py >> "$TMP/results/rparse-times.tsv") \
+            || fail_and_cleanup "results"
+    done
+        
+    $DISCO eval "$TMP/negra/test-1-9.export" "$TMP/results/rparse-predictions.export" \
+         > "$RESULTS/rparse-tfcv-scores.txt" \
+        || fail_and_cleanup "results"
+    
+    $PYTHON scripts/averages.py mean 3 1 < "$TMP/results/rparse-times.txt" > "$RESULTS/rparse-times-mean.csv" \
+        || fail_and_cleanup "results"
+    $PYTHON scripts/averages.py median 3 1 < "$TMP/results/rparse-times.txt" > "$RESULTS/rparse-times-median.csv" \
+        || fail_and_cleanup "results"
 }
 
 function gf_nfcv {
-    echo "warning: not implemented"
+    assert_folder_structure
+    assert_tfcv_negra_files
+    assert_tfcv_gf_files
+
+    for fold in {1..9}; do
+        $GF "$TMP/grammars/gf-$fold/grammargfconcrete.gfo" < "$TMP/negra/test-$fold-gf.sent" | $PYTHON scripts/parse_gf_output.py "$TMP/negra/test-$fold.sent" \
+              > >(sed 's/[[:digit:]]:[[:digit:]]\+//g' | $DISCO treetransforms --inputfmt=bracket | $PYTHON scripts/fill_sentence_id.py "$TMP/negra/test-$fold.sent" >> "$TMP/results/gf-predictions.export")
+            2>> "$TMP/resulst/gf-times.tsv"
+    done
+
+    $DISCO eval "$TMP/negra/test-1-9.export" "$TMP/results/gf-predictions.export" \
+         > "$RESULTS/gf-tfcv-scores.txt" \
+        || fail_and_cleanup "results"
+    
+    $PYTHON scripts/averages.py mean 1 0 < "$TMP/results/gf-times.tsv" > "$RESULTS/gf-times-mean.tsv" \
+        || fail_and_cleanup "results"
+    $PYTHON scripts/averages.py median 1 0 < "$TMP/results/gf-times.tsv" > "$RESULTS/gf-times-median.tsv" \
+        || fail_and_cleanup "results"
 }
 
 function discodop_nfcv {
@@ -33,7 +68,7 @@ function discodop_nfcv {
             || fail_and_cleanup "results"
         
         tail -n+2 "$TMP/grammars/discodop-$fold/stats.tsv" >> "$TMP/results/discodop-times.txt"
-        tail -n+2 "$TMP/grammars/discodop-$fold/plcfrs.export" >> "$TMP/results/discodop-predictions.export"
+        cat "$TMP/grammars/discodop-$fold/plcfrs.export" >> "$TMP/results/discodop-predictions.export"
     done
         
     $DISCO eval "$TMP/negra/test-1-9.export" "$TMP/results/discodop-predictions.export" \
@@ -113,14 +148,19 @@ function assert_folder_structure {
 }
 
 function assert_tfcv_negra_files {
-    if ! [ -f $TMP/negra/test-1-9.export ]; then
+    if ! [ -f "$TMP/negra/negra-corpus-low-punctuation.export" ]; then
         echo "#FORMAT 3" > $TMP/negra/negra-corpus-low-punctuation.export
-        $DISCO treetransforms --punct=move $NEGRA >> $TMP/negra/negra-corpus-low-punctuation.export
+        $DISCO treetransforms --punct=move $NEGRA >> $TMP/negra/negra-corpus-low-punctuation.export \
+            || fail_and_cleanup "/negra/negra-corpus-low-punctuation.export"
+    fi
+    if ! [ -f "$TMP/negra/test-1.export" ]; then
         $PYTHON scripts/tfcv.py $TMP/negra/negra-corpus-low-punctuation.export --out-prefix=$TMP/negra --max-length=$MAXLENGTH --fix-discodop-transformation=true
-
+    fi
+    if ! [ -f "$TMP/negra/test-1-9.export" ]; then
         echo "#FORMAT 3" > "$TMP/negra/test-1-9.export"
         for fold in {1..9}; do
             tail -n+2 "$TMP/negra/test-$fold.export" >> "$TMP/negra/test-1-9.export"
+            echo "" >> "$TMP/negra/test-1-9.export"
         done
     fi
 }
@@ -132,15 +172,15 @@ function assert_tfcv_rustomata_files {
         done
     else
         if ! [ -f $TMP/grammars/train-$1.cs ]; then
-            $VANDA pmcfg extract -p $TMP/grammars/train-$1.vanda < $TMP/negra/train-$1.export || fail_and_cleanup "grammars"
-            $RUSTOMATA csparsing extract < $TMP/grammars/train-$1.vanda.readable > $TMP/grammars/train-$1.cs || fail_and_cleanup "grammars"
+            $VANDA pmcfg extract -p $TMP/grammars/train-$1.vanda < $TMP/negra/train-$1.export || fail_and_cleanup
+            $RUSTOMATA csparsing extract < $TMP/grammars/train-$1.vanda.readable > $TMP/grammars/train-$1.cs || fail_and_cleanup "grammars/train-$1.cs"
         fi
     fi
 }
 
 function assert_tfcv_discodop_files {
     for fold in {0..9}; do
-        if ! [ -d "$TMP/grammars/discodop-train-$fold" ]; then
+        if ! [ -f "$TMP/grammars/discodop-$fold.prm" ]; then
             sed "s:{TRAIN}:$TMP/negra/train-$fold.export:" templates/discodop.prm \
                 | sed "s:{TEST}:$TMP/negra/test-$fold.export:" \
                 | sed "s:{MAXLENGTH}:$MAXLENGTH:" \
@@ -149,14 +189,39 @@ function assert_tfcv_discodop_files {
     done
 }
 
-function fail_and_cleanup {
-    # if [ -d "$RESULTS" ]; then
-    #     $TRASH $RESULTS
-    # fi
+function assert_tfcv_gf_files {
+    for fold in {0..9}; do
+        if ! [ -d "$TMP/grammars/gf-$fold" ]; then
+            $RPARSE -doTrain -train "$TMP/negra/train-$fold.export" -headFinder negra -trainSave "$TMP/grammars/gf-$fold" &> /dev/null \
+                || fail_and_cleanup "grammars/gf-$fold"
+            $GF --make "$TMP/grammars/gf-$fold/grammargfconcrete.gf" &> /dev/null \
+                || fail_and_cleanup "grammars/gf-$fold"
+        fi
 
-    # if (( $# == 1 )) && [ -d "$TMP/$1" ]; then
-    #     $TRASH "$TMP/$1"
-    # fi
+        if ! [ -f "$TMP/negra/test-$fold-gf.sent" ]; then
+            sed 's/^[[:digit:]]\+[[:space:]]\+//' "$TMP/negra/test-$fold.sent" \
+                 | sed 's#/[^[:space:]/]\+[[:space:]]# #g' \
+                 | sed 's#/[^[:space:]/]\+$# #g' \
+                 | sed --file "scripts/gf-escapes.sed" \
+                 | sed 's#^.\+$#p -bracket "&"#' > "$TMP/negra/test-$fold-gf.sent" \
+                || fail_and_cleanup "negra/test-$fold-gf.sent"
+        fi
+    done
+}
+
+function assert_tfcv_rparse_files {
+    for fold in {0..9}; do
+        if ! [ -f "$TMP/grammars/rparse-train-$fold" ]; then
+            $RPARSE -doTrain -train "$TMP/negra/train-$fold.export" -headFinder negra -saveModel "$TMP/grammars/rparse-train-$fold" &> /dev/null \
+                || fail_and_cleanup "grammars/rparse-train-$fold"
+        fi
+    done
+}
+
+function fail_and_cleanup {
+    if (( $# == 1 )) && [ -d "$TMP/$1" ]; then
+        $TRASH "$TMP/$1"
+    fi
 
     exit 1
 }

@@ -11,8 +11,8 @@ NEGRA="$HOME/negra/negra-corpus.utf"
 # tools
 RUSTOMATA="$HOME/rustomata/target/release/rustomata"
 VANDA="$HOME/.local/bin/vanda"
-RPARSE="java -jar rparse/rparse.jar"
-GF="gf/.cabal-sandbox/bin/gf"
+RPARSE="java -jar $HOME/rparse/rparse.jar"
+GF="$HOME/.local/bin/gf"
 DISCO="discodop"
 PYTHON="python"
 
