@@ -24,17 +24,17 @@ function rparse_nfcv {
         $RPARSE -doParse -test "$TMP/negra/test-$fold.export" -testFormat export -readModel "$TMP/grammars/rparse-train-$fold" -timeout "$RPARSE_TIMEOUT" \
              > >($PYTHON scripts/fill_sentence_id.py "$TMP/negra/test-$fold.sent" | $PYTHON scripts/fill_noparses.py "$TMP/negra/test-$fold.sent" >> "$TMP/results/rparse-predictions.export")  \
             2> >($PYTHON scripts/parse_rparse_output.py >> "$TMP/results/rparse-times.tsv") \
-            || fail_and_cleanup "results"
+            || fail_and_cleanup "results/rparse-predictions.export" "results/rparse-times.tsv"
     done
         
     $DISCO eval "$TMP/negra/test-1-9.export" "$TMP/results/rparse-predictions.export" \
          > "$RESULTS/rparse-tfcv-scores.txt" \
-        || fail_and_cleanup "results"
+        || fail_and_cleanup
     
-    $PYTHON scripts/averages.py mean 3 1 < "$TMP/results/rparse-times.txt" > "$RESULTS/rparse-times-mean.csv" \
-        || fail_and_cleanup "results"
-    $PYTHON scripts/averages.py median 3 1 < "$TMP/results/rparse-times.txt" > "$RESULTS/rparse-times-median.csv" \
-        || fail_and_cleanup "results"
+    $PYTHON scripts/averages.py mean 1 0 < "$TMP/results/rparse-times.tsv" > "$RESULTS/rparse-times-mean.tsv" \
+        || fail_and_cleanup
+    $PYTHON scripts/averages.py median 1 0 < "$TMP/results/rparse-times.tsv" > "$RESULTS/rparse-times-median.tsv" \
+        || fail_and_cleanup
 }
 
 function gf_nfcv {
@@ -44,18 +44,19 @@ function gf_nfcv {
 
     for fold in {1..9}; do
         $GF "$TMP/grammars/gf-$fold/grammargfconcrete.gfo" < "$TMP/negra/test-$fold-gf.sent" | $PYTHON scripts/parse_gf_output.py "$TMP/negra/test-$fold.sent" \
-              > >(sed 's/[[:digit:]]:[[:digit:]]\+//g' | $DISCO treetransforms --inputfmt=bracket | $PYTHON scripts/fill_sentence_id.py "$TMP/negra/test-$fold.sent" >> "$TMP/results/gf-predictions.export")
-            2>> "$TMP/resulst/gf-times.tsv"
+              > >(sed 's/[[:digit:]]:[[:digit:]]\+//g' | $DISCO treetransforms --inputfmt=bracket | $PYTHON scripts/fill_sentence_id.py "$TMP/negra/test-$fold.sent" >> "$TMP/results/gf-predictions.export") \
+            2>> "$TMP/results/gf-times.tsv" \
+             || fail_and_cleanup "results/gf-predictions.export" "results/gf-times.tsv"
     done
 
     $DISCO eval "$TMP/negra/test-1-9.export" "$TMP/results/gf-predictions.export" \
          > "$RESULTS/gf-tfcv-scores.txt" \
-        || fail_and_cleanup "results"
+        || fail_and_cleanup
     
     $PYTHON scripts/averages.py mean 1 0 < "$TMP/results/gf-times.tsv" > "$RESULTS/gf-times-mean.tsv" \
-        || fail_and_cleanup "results"
+        || fail_and_cleanup
     $PYTHON scripts/averages.py median 1 0 < "$TMP/results/gf-times.tsv" > "$RESULTS/gf-times-median.tsv" \
-        || fail_and_cleanup "results"
+        || fail_and_cleanup
 }
 
 function discodop_nfcv {
@@ -65,20 +66,20 @@ function discodop_nfcv {
 
     for fold in {1..9}; do
         $DISCO runexp "$TMP/grammars/discodop-$fold.prm" &> /dev/null \
-            || fail_and_cleanup "results"
+            || fail_and_cleanup "grammars/discodop-$fold"
         
-        tail -n+2 "$TMP/grammars/discodop-$fold/stats.tsv" >> "$TMP/results/discodop-times.txt"
+        tail -n+2 "$TMP/grammars/discodop-$fold/stats.tsv" >> "$TMP/results/discodop-times.tsv"
         cat "$TMP/grammars/discodop-$fold/plcfrs.export" >> "$TMP/results/discodop-predictions.export"
     done
         
     $DISCO eval "$TMP/negra/test-1-9.export" "$TMP/results/discodop-predictions.export" \
          > "$RESULTS/discodop-tfcv-scores.txt" \
-        || fail_and_cleanup "results"
+        || fail_and_cleanup
     
-    $PYTHON scripts/averages.py mean 3 1 < "$TMP/results/discodop-times.txt" > "$RESULTS/discodop-times-mean.csv" \
-        || fail_and_cleanup "results"
-    $PYTHON scripts/averages.py median 3 1 < "$TMP/results/discodop-times.txt" > "$RESULTS/discodop-times-median.csv" \
-        || fail_and_cleanup "results"
+    $PYTHON scripts/averages.py mean 3 1 < "$TMP/results/discodop-times.tsv" > "$RESULTS/discodop-times-mean.tsv" \
+        || fail_and_cleanup
+    $PYTHON scripts/averages.py median 3 1 < "$TMP/results/discodop-times.tsv" > "$RESULTS/discodop-times-median.tsv" \
+        || fail_and_cleanup
 }
 
 function rustomata_nfcv {
@@ -88,19 +89,19 @@ function rustomata_nfcv {
 
     for fold in {1..9}; do
         $RUSTOMATA csparsing parse "$TMP/grammars/train-$fold.cs" --beam=$RUSTOMATA_D_BEAM --candidates=$RUSTOMATA_D_CANDIDATES --with-pos --with-lines --debug < "$TMP/negra/test-$fold.sent" \
-            2>> "$TMP/results/rustomata-times.csv" \
+            2>> "$TMP/results/rustomata-times.tsv" \
               | sed 's:_[[:digit:]]::' >> "$TMP/results/rustomata-predictions.export" \
-             || fail_and_cleanup "results"
+             || fail_and_cleanup "results/rustomata-times.tsv" "results/rustomata-predictions.export"
     done
         
     $DISCO eval "$TMP/negra/test-1-9.export" "$TMP/results/rustomata-predictions.export" \
         >> $RESULTS/rustomata-scores.txt \
-        || fail_and_cleanup "results"
+        || fail_and_cleanup
     
-    $PYTHON scripts/averages.py mean 5 1 < "$TMP/results/rustomata-times.csv" >> "$RESULTS/rustomata-times-mean.csv" \
-        || fail_and_cleanup "results"
-    $PYTHON scripts/averages.py median 5 1 < "$TMP/results/rustomata-times.csv" >> "$RESULTS/rustomata-times-median.csv" \
-        || fail_and_cleanup "results"
+    $PYTHON scripts/averages.py mean 5 1 < "$TMP/results/rustomata-times.tsv" >> "$RESULTS/rustomata-times-mean.tsv" \
+        || fail_and_cleanup
+    $PYTHON scripts/averages.py median 5 1 < "$TMP/results/rustomata-times.tsv" >> "$RESULTS/rustomata-times-median.tsv" \
+        || fail_and_cleanup
 }
 
 # this section contains the function to evaluate the meta-parameters for
@@ -115,23 +116,23 @@ function rustomata_ofcv {
     for beam in ${RUSTOMATA_BEAMS[*]}; do
         for cans in ${RUSTOMATA_CANDIDATES[*]}; do
             $RUSTOMATA csparsing parse $TMP/grammars/train-0.cs --beam=$beam --candidates=$cans --with-pos --with-lines --debug < $TMP/negra/test-0.sent \
-                2> $TMP/results/rustomata-ofcv-$beam-$cans-times.csv \
-                 | sed 's:_[[:digit:]]::' > $TMP/results/rustomata-ofcv-$beam-$cans-predictions.export \
-                || fail_and_cleanup "results"
+                2> "$TMP/results/rustomata-ofcv-$beam-$cans-times.tsv" \
+                 | sed 's:_[[:digit:]]::' > "$TMP/results/rustomata-ofcv-$beam-$cans-predictions.export" \
+                || fail_and_cleanup "results/rustomata-ofcv-$beam-$cans-times.csv" "results/rustomata-ofcv-$beam-$cans-predictions.export"
             
-            echo -ne "$beam\t$cans\t" >> $RESULTS/rustomata-ofcv-scores.txt
+            echo -ne "$beam\t$cans\t" >> $RESULTS/rustomata-ofcv-scores.tsv
             $DISCO eval $TMP/negra/test-0.export $TMP/results/rustomata-ofcv-$beam-$cans-predictions.export \
                  | grep -oP "labeled (precision|recall|f-measure):\s+\K\d+.\d+" \
-                 | awk -vRS="\n" -vORS="\t" '1' >> $RESULTS/rustomata-ofcv-scores.txt \
-                || fail_and_cleanup "results"
-            echo "" >> $RESULTS/rustomata-ofcv-scores.txt
+                 | awk -vRS="\n" -vORS="\t" '1' >> $RESULTS/rustomata-ofcv-scores.tsv \
+                || fail_and_cleanup
+            echo "" >> $RESULTS/rustomata-ofcv-scores.tsv
             
-            echo -ne "$beam\t$cans\t" >> $RESULTS/rustomata-ofcv-times-mean.csv
-            echo -ne "$beam\t$cans\t" >> $RESULTS/rustomata-ofcv-times-median.csv
-            $PYTHON scripts/averages.py mean 5 1 < $TMP/results/rustomata-ofcv-$beam-$cans-times.csv >> $RESULTS/rustomata-ofcv-times-mean.csv \
-                || fail_and_cleanup "results"
-            $PYTHON scripts/averages.py median 5 1 < $TMP/results/rustomata-ofcv-$beam-$cans-times.csv >> $RESULTS/rustomata-ofcv-times-median.csv \
-                || fail_and_cleanup "results"
+            echo -ne "$beam\t$cans\t" >> $RESULTS/rustomata-ofcv-times-mean.tsv
+            echo -ne "$beam\t$cans\t" >> $RESULTS/rustomata-ofcv-times-median.tsv
+            $PYTHON scripts/averages.py mean 5 1 < $TMP/results/rustomata-ofcv-$beam-$cans-times.tsv >> $RESULTS/rustomata-ofcv-times-mean.tsv \
+                || fail_and_cleanup
+            $PYTHON scripts/averages.py median 5 1 < $TMP/results/rustomata-ofcv-$beam-$cans-times.tsv >> $RESULTS/rustomata-ofcv-times-median.tsv \
+                || fail_and_cleanup
         done
     done
 }
@@ -219,9 +220,11 @@ function assert_tfcv_rparse_files {
 }
 
 function fail_and_cleanup {
-    if (( $# == 1 )) && [ -d "$TMP/$1" ]; then
-        $TRASH "$TMP/$1"
-    fi
+    for f in $@; do
+        if [ -d "$TMP/$f" ] || [ -f "$TMP/$f" ]; then
+            $TRASH "$TMP/$f"
+        fi
+    done
 
     exit 1
 }

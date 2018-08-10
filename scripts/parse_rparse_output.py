@@ -1,5 +1,5 @@
 def format(l):
-    "%d\t%d\t%d" %(l[0], l[1], 1 if l[2] else 0)
+    return "%d\t%f\t%d" %(l[0], l[1], 1 if l[2] else 0)
 
 if __name__ == "__main__":
     import re
@@ -15,7 +15,7 @@ if __name__ == "__main__":
         try:
             words = int(newl.match(line).group(1))
             if last_parse: print(format(last_parse))
-            last_parse = [words, 0, True]
+            last_parse = [words, 0.0, True]
         except: pass
         try:
             c, e = time.match(line).group(1, 2)
