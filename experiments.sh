@@ -42,8 +42,9 @@ function gf_nfcv {
     assert_tfcv_negra_files
     assert_tfcv_gf_files
 
-    for fold in {1..9}; do
-        $GF "$TMP/grammars/gf-$fold/grammargfconcrete.gfo" < "$TMP/negra/test-$fold-gf.sent" | $PYTHON scripts/parse_gf_output.py "$TMP/negra/test-$fold.sent" \
+    for fold in {1..1}; do
+        gf_with_timeout "$TMP/grammars/gf-$fold/grammargfconcrete.gfo" "$TMP/negra/test-$fold-gf.sent" \
+              | $PYTHON scripts/parse_gf_output.py "$TMP/negra/test-$fold.sent" \
               > >(sed 's/[[:digit:]]:[[:digit:]]\+//g' | $DISCO treetransforms --inputfmt=bracket | $PYTHON scripts/fill_sentence_id.py "$TMP/negra/test-$fold.sent" >> "$TMP/results/gf-predictions.export") \
             2>> "$TMP/results/gf-times.tsv" \
              || fail_and_cleanup "results/gf-predictions.export" "results/gf-times.tsv"
@@ -139,6 +140,24 @@ function rustomata_ofcv {
 
 # this section contains helper functions
 FOLDERS=("$TMP" "$TMP/grammars" "$TMP/negra" "$TMP/results" "$RESULTS")
+
+# wraps 
+function gf_with_timeout {
+    outputs=""
+    while read sentence || [ -n "$sentence" ]; do
+        sentenceoutput="$(echo $sentence | timeout $GF_TIMEOUT $GF $1)"
+        ec=$?
+        if (( $ec == 124 )); then       # timeout
+            outputs="$outputs\nTIMEOUT> (_:0)\n${GF_TIMEOUT}000 msec"
+        elif (( $ec != 0 )); then       # some other error
+            return $ec
+        else                            # no error, propagate output
+            lines=$(echo "$sentenceoutput" | grep -P -A1 '^[^>]+> \K.+' | head -n2)
+            outputs="$outputs\n$lines"
+        fi
+    done <"$2"
+    echo -e "$outputs"
+}
 
 function assert_folder_structure {
     for folder in ${FOLDERS[*]}; do

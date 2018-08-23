@@ -22,6 +22,7 @@ RUSTOMATA_D_BEAM="10000"
 RUSTOMATA_BEAMS=("100" "1000" "10000" "100000")
 RUSTOMATA_CANDIDATES=("1" "10" "100" "1000")
 RPARSE_TIMEOUT="30"
+GF_TIMEOUT="30"
 DISCODOP_EVAL="templates/discodop-eval.prm"
 
 # command to remove old files with $TRASH <file>

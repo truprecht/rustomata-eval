@@ -9,7 +9,8 @@ if __name__ == "__main__":
 
     assert len(argv) == 2, "use %s <sentence file>" %argv[0]
 
-    deriv = re.compile(r"""^grammargfabstract> (\(.*\))$""")
+    deriv = re.compile(r"""^[^>]+> (\(.*\))$""")
+    illegalderiv = re.compile(r"""^\([^\s]+ [^\(\)]+\)$""")
     time = re.compile(r"""^(\d+) msec$""")
 
     sentence = re.compile(r"""^(\d+)\s+(.*)$""")
@@ -30,12 +31,13 @@ if __name__ == "__main__":
         derivm = deriv.match(line)
         timem = time.match(line)
         if derivm:
-            if derivm.group(1) != "(_:0)":
-                print(derivm.group(1))
-                last_passed = True
-            else:
+            illegalderivm = illegalderiv.match(derivm.group(1))
+            if illegalderivm or derivm.group(1) == "(_:0)":
                 print("(VROOT (NOPARSE %s))" %" ".join(["(%s %s)"%(pos, word) for (word, pos) in sentences[index][1]]))
                 last_passed = False
+            else:
+                print(derivm.group(1))
+                last_passed = True
         elif timem:
             eprint( "%d\t%s\t%d" %(len(sentences[index][1]), timem.group(1), 1 if last_passed else 0) )
             index += 1
