@@ -99,9 +99,9 @@ function rustomata_nfcv {
         >> $RESULTS/rustomata-scores.txt \
         || fail_and_cleanup
     
-    $PYTHON $SCRIPTS/averages.py mean 5 1 < "$TMP/results/rustomata-times.tsv" >> "$RESULTS/rustomata-times-mean.tsv" \
+    $PYTHON $SCRIPTS/averages.py mean 3 1 < "$TMP/results/rustomata-times.tsv" >> "$RESULTS/rustomata-times-mean.tsv" \
         || fail_and_cleanup
-    $PYTHON $SCRIPTS/averages.py median 5 1 < "$TMP/results/rustomata-times.tsv" >> "$RESULTS/rustomata-times-median.tsv" \
+    $PYTHON $SCRIPTS/averages.py median 3 1 < "$TMP/results/rustomata-times.tsv" >> "$RESULTS/rustomata-times-median.tsv" \
         || fail_and_cleanup
 }
 
@@ -130,9 +130,9 @@ function rustomata_ofcv {
             
             echo -ne "$beam\t$cans\t" >> $RESULTS/rustomata-ofcv-times-mean.tsv
             echo -ne "$beam\t$cans\t" >> $RESULTS/rustomata-ofcv-times-median.tsv
-            $PYTHON $SCRIPTS/averages.py mean 5 1 < $TMP/results/rustomata-ofcv-$beam-$cans-times.tsv >> $RESULTS/rustomata-ofcv-times-mean.tsv \
+            $PYTHON $SCRIPTS/averages.py mean 3 1 < $TMP/results/rustomata-ofcv-$beam-$cans-times.tsv >> $RESULTS/rustomata-ofcv-times-mean.tsv \
                 || fail_and_cleanup
-            $PYTHON $SCRIPTS/averages.py median 5 1 < $TMP/results/rustomata-ofcv-$beam-$cans-times.tsv >> $RESULTS/rustomata-ofcv-times-median.tsv \
+            $PYTHON $SCRIPTS/averages.py median 3 1 < $TMP/results/rustomata-ofcv-$beam-$cans-times.tsv >> $RESULTS/rustomata-ofcv-times-median.tsv \
                 || fail_and_cleanup
         done
     done
