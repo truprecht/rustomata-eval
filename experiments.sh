@@ -22,8 +22,8 @@ function rparse_nfcv {
 
     for fold in {1..9}; do
         $RPARSE -doParse -test "$TMP/negra/test-$fold.export" -testFormat export -readModel "$TMP/grammars/rparse-train-$fold" -timeout "$RPARSE_TIMEOUT" \
-             > >($PYTHON scripts/fill_sentence_id.py "$TMP/negra/test-$fold.sent" | $PYTHON scripts/fill_noparses.py "$TMP/negra/test-$fold.sent" >> "$TMP/results/rparse-predictions.export")  \
-            2> >($PYTHON scripts/parse_rparse_output.py >> "$TMP/results/rparse-times.tsv") \
+             > >($PYTHON $SCRIPTS/fill_sentence_id.py "$TMP/negra/test-$fold.sent" | $PYTHON $SCRIPTS/fill_noparses.py "$TMP/negra/test-$fold.sent" >> "$TMP/results/rparse-predictions.export")  \
+            2> >($PYTHON $SCRIPTS/parse_rparse_output.py >> "$TMP/results/rparse-times.tsv") \
             || fail_and_cleanup "results/rparse-predictions.export" "results/rparse-times.tsv"
     done
         
@@ -31,9 +31,9 @@ function rparse_nfcv {
          > "$RESULTS/rparse-tfcv-scores.txt" \
         || fail_and_cleanup
     
-    $PYTHON scripts/averages.py mean 1 0 < "$TMP/results/rparse-times.tsv" > "$RESULTS/rparse-times-mean.tsv" \
+    $PYTHON $SCRIPTS/averages.py mean 1 0 < "$TMP/results/rparse-times.tsv" > "$RESULTS/rparse-times-mean.tsv" \
         || fail_and_cleanup
-    $PYTHON scripts/averages.py median 1 0 < "$TMP/results/rparse-times.tsv" > "$RESULTS/rparse-times-median.tsv" \
+    $PYTHON $SCRIPTS/averages.py median 1 0 < "$TMP/results/rparse-times.tsv" > "$RESULTS/rparse-times-median.tsv" \
         || fail_and_cleanup
 }
 
@@ -44,8 +44,8 @@ function gf_nfcv {
 
     for fold in {1..1}; do
         gf_with_timeout "$TMP/grammars/gf-$fold/grammargfconcrete.gfo" "$TMP/negra/test-$fold-gf.sent" \
-              | $PYTHON scripts/parse_gf_output.py "$TMP/negra/test-$fold.sent" \
-              > >(sed 's/[[:digit:]]:[[:digit:]]\+//g' | sed 's:$(:_P_OPEN_:g' | $DISCO treetransforms --inputfmt=bracket | sed 's:_P_OPEN_:$(:g' | $PYTHON scripts/fill_sentence_id.py "$TMP/negra/test-$fold.sent" >> "$TMP/results/gf-predictions.export") \
+              | $PYTHON $SCRIPTS/parse_gf_output.py "$TMP/negra/test-$fold.sent" \
+              > >(sed 's/[[:digit:]]:[[:digit:]]\+//g' | sed 's:$(:_P_OPEN_:g' | $DISCO treetransforms --inputfmt=bracket | sed 's:_P_OPEN_:$(:g' | $PYTHON $SCRIPTS/fill_sentence_id.py "$TMP/negra/test-$fold.sent" >> "$TMP/results/gf-predictions.export") \
             2>> "$TMP/results/gf-times.tsv" \
              || fail_and_cleanup "results/gf-predictions.export" "results/gf-times.tsv"
     done
@@ -54,9 +54,9 @@ function gf_nfcv {
          > "$RESULTS/gf-tfcv-scores.txt" \
         || fail_and_cleanup
     
-    $PYTHON scripts/averages.py mean 1 0 < "$TMP/results/gf-times.tsv" > "$RESULTS/gf-times-mean.tsv" \
+    $PYTHON $SCRIPTS/averages.py mean 1 0 < "$TMP/results/gf-times.tsv" > "$RESULTS/gf-times-mean.tsv" \
         || fail_and_cleanup
-    $PYTHON scripts/averages.py median 1 0 < "$TMP/results/gf-times.tsv" > "$RESULTS/gf-times-median.tsv" \
+    $PYTHON $SCRIPTS/averages.py median 1 0 < "$TMP/results/gf-times.tsv" > "$RESULTS/gf-times-median.tsv" \
         || fail_and_cleanup
 }
 
@@ -77,9 +77,9 @@ function discodop_nfcv {
          > "$RESULTS/discodop-tfcv-scores.txt" \
         || fail_and_cleanup
     
-    $PYTHON scripts/averages.py mean 3 1 < "$TMP/results/discodop-times.tsv" > "$RESULTS/discodop-times-mean.tsv" \
+    $PYTHON $SCRIPTS/averages.py mean 3 1 < "$TMP/results/discodop-times.tsv" > "$RESULTS/discodop-times-mean.tsv" \
         || fail_and_cleanup
-    $PYTHON scripts/averages.py median 3 1 < "$TMP/results/discodop-times.tsv" > "$RESULTS/discodop-times-median.tsv" \
+    $PYTHON $SCRIPTS/averages.py median 3 1 < "$TMP/results/discodop-times.tsv" > "$RESULTS/discodop-times-median.tsv" \
         || fail_and_cleanup
 }
 
@@ -99,9 +99,9 @@ function rustomata_nfcv {
         >> $RESULTS/rustomata-scores.txt \
         || fail_and_cleanup
     
-    $PYTHON scripts/averages.py mean 5 1 < "$TMP/results/rustomata-times.tsv" >> "$RESULTS/rustomata-times-mean.tsv" \
+    $PYTHON $SCRIPTS/averages.py mean 5 1 < "$TMP/results/rustomata-times.tsv" >> "$RESULTS/rustomata-times-mean.tsv" \
         || fail_and_cleanup
-    $PYTHON scripts/averages.py median 5 1 < "$TMP/results/rustomata-times.tsv" >> "$RESULTS/rustomata-times-median.tsv" \
+    $PYTHON $SCRIPTS/averages.py median 5 1 < "$TMP/results/rustomata-times.tsv" >> "$RESULTS/rustomata-times-median.tsv" \
         || fail_and_cleanup
 }
 
@@ -130,9 +130,9 @@ function rustomata_ofcv {
             
             echo -ne "$beam\t$cans\t" >> $RESULTS/rustomata-ofcv-times-mean.tsv
             echo -ne "$beam\t$cans\t" >> $RESULTS/rustomata-ofcv-times-median.tsv
-            $PYTHON scripts/averages.py mean 5 1 < $TMP/results/rustomata-ofcv-$beam-$cans-times.tsv >> $RESULTS/rustomata-ofcv-times-mean.tsv \
+            $PYTHON $SCRIPTS/averages.py mean 5 1 < $TMP/results/rustomata-ofcv-$beam-$cans-times.tsv >> $RESULTS/rustomata-ofcv-times-mean.tsv \
                 || fail_and_cleanup
-            $PYTHON scripts/averages.py median 5 1 < $TMP/results/rustomata-ofcv-$beam-$cans-times.tsv >> $RESULTS/rustomata-ofcv-times-median.tsv \
+            $PYTHON $SCRIPTS/averages.py median 5 1 < $TMP/results/rustomata-ofcv-$beam-$cans-times.tsv >> $RESULTS/rustomata-ofcv-times-median.tsv \
                 || fail_and_cleanup
         done
     done
@@ -174,7 +174,7 @@ function assert_tfcv_negra_files {
             || fail_and_cleanup "/negra/negra-corpus-low-punctuation.export"
     fi
     if ! [ -f "$TMP/negra/test-1.export" ]; then
-        $PYTHON scripts/tfcv.py $TMP/negra/negra-corpus-low-punctuation.export --out-prefix=$TMP/negra --max-length=$MAXLENGTH --fix-discodop-transformation=true
+        $PYTHON $SCRIPTS/tfcv.py $TMP/negra/negra-corpus-low-punctuation.export --out-prefix=$TMP/negra --max-length=$MAXLENGTH --fix-discodop-transformation=true
     fi
     if ! [ -f "$TMP/negra/test-1-9.export" ]; then
         echo "#FORMAT 3" > "$TMP/negra/test-1-9.export"
@@ -222,7 +222,7 @@ function assert_tfcv_gf_files {
             sed 's/^[[:digit:]]\+[[:space:]]\+//' "$TMP/negra/test-$fold.sent" \
                  | sed 's#/[^[:space:]/]\+[[:space:]]# #g' \
                  | sed 's#/[^[:space:]/]\+$# #g' \
-                 | sed --file "scripts/gf-escapes.sed" \
+                 | sed --file "$SCRIPTS/gf-escapes.sed" \
                  | sed 's#^.\+$#p -bracket "&"#' > "$TMP/negra/test-$fold-gf.sent" \
                 || fail_and_cleanup "negra/test-$fold-gf.sent"
         fi

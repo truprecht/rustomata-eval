@@ -7,6 +7,7 @@ MAXLENGTH=20
 TMP="/tmp/rustomata-cs-eval"
 RESULTS="results"
 NEGRA="$HOME/negra/negra-corpus.utf"
+SCRIPTS="scripts"
 
 # tools
 RUSTOMATA="$HOME/rustomata/target/release/rustomata"
@@ -17,10 +18,10 @@ DISCO="discodop"
 PYTHON="python"
 
 # approximation and other parameters
-RUSTOMATA_D_CANDIDATES="100"
-RUSTOMATA_D_BEAM="10000"
-RUSTOMATA_BEAMS=("100" "1000" "10000" "100000")
-RUSTOMATA_CANDIDATES=("1" "10" "100" "1000")
+RUSTOMATA_D_CANDIDATES="10000"
+RUSTOMATA_D_BEAM="∞"
+RUSTOMATA_BEAMS=("1000" "10000" "100000" "∞")
+RUSTOMATA_CANDIDATES=("1" "10" "100" "1000" "10000" "100000")
 RPARSE_TIMEOUT="30"
 GF_TIMEOUT="30"
 DISCODOP_EVAL="templates/discodop-eval.prm"
