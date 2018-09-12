@@ -45,7 +45,7 @@ function gf_nfcv {
     for fold in {1..1}; do
         gf_with_timeout "$TMP/grammars/gf-$fold/grammargfconcrete.gfo" "$TMP/negra/test-$fold-gf.sent" \
               | $PYTHON scripts/parse_gf_output.py "$TMP/negra/test-$fold.sent" \
-              > >(sed 's/[[:digit:]]:[[:digit:]]\+//g' | $DISCO treetransforms --inputfmt=bracket | $PYTHON scripts/fill_sentence_id.py "$TMP/negra/test-$fold.sent" >> "$TMP/results/gf-predictions.export") \
+              > >(sed 's/[[:digit:]]:[[:digit:]]\+//g' | sed 's:$(:_P_OPEN_:g' | $DISCO treetransforms --inputfmt=bracket | sed 's:_P_OPEN_:$(:g' | $PYTHON scripts/fill_sentence_id.py "$TMP/negra/test-$fold.sent" >> "$TMP/results/gf-predictions.export") \
             2>> "$TMP/results/gf-times.tsv" \
              || fail_and_cleanup "results/gf-predictions.export" "results/gf-times.tsv"
     done
