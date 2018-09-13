@@ -14,13 +14,21 @@ if __name__ == "__main__":
     time = re.compile(r"""^(\d+) msec$""")
 
     sentence = re.compile(r"""^(\d+)\s+(.*)$""")
+    
+    def illegal_deriv(input_words, deriv):
+        words_with_pos = re.compile(r"""\(([^\s]+) ([^\)]+)\)""")
+        wps = words_with_pos.findall(deriv)
+        if not wps: return True
+        poss, words = zip(*wps)
+        return any([pos.startswith("VROOT") for pos in poss]) or words != input_words
+ 
     word_pos = re.compile(r"""([^\s]+)/([^\s/]+)""")
     sentences = []
     with open(argv[1]) as sentence_file:
         for line in sentence_file:
             if line.strip():
-                sentence_id, words = sentence.match(line).group(1, 2)
-                sentences.append(( int(sentence_id), word_pos.findall(words) ))
+                _, words = sentence.match(line).group(1, 2)
+                sentences.append(word_pos.findall(words))
 
     last_passed = True
     index = 0
@@ -31,13 +39,12 @@ if __name__ == "__main__":
         derivm = deriv.match(line)
         timem = time.match(line)
         if derivm:
-            illegalderivm = illegalderiv.match(derivm.group(1))
-            if illegalderivm or derivm.group(1) == "(_:0)":
-                print("(VROOT (NOPARSE %s))" %" ".join(["(%s %s)"%(pos, word) for (word, pos) in sentences[index][1]]))
+            if illegal_deriv([word for (word, _) in sentences[index]], derivm.group(1)):
+                print("(VROOT (NOPARSE %s))" %" ".join(["(%s %s)"%(pos, word) for (word, pos) in sentences[index]]))
                 last_passed = False
             else:
                 print(derivm.group(1))
                 last_passed = True
         elif timem:
-            eprint( "%d\t%s\t%d" %(len(sentences[index][1]), timem.group(1), 1 if last_passed else 0) )
+            eprint( "%d\t%s\t%d" %(len(sentences[index]), timem.group(1), 1 if last_passed else 0) )
             index += 1

@@ -61,7 +61,7 @@ if __name__ == "__main__":
         exit(0)
 
     optional_arguments = get_optional_arguments({ "max-length": None, "out-prefix": "", "fix-discodop-transformation": None })
-    max_length, prefix, fix = int(optional_arguments["max-length"]), optional_arguments["out-prefix"], optional_arguments["fix-discodop-transformation"] in ["yes", "true", "True", "on"]
+    max_length, prefix, fix = int(optional_arguments["max-length"]) if optional_arguments["max-length"] else 1000, optional_arguments["out-prefix"], optional_arguments["fix-discodop-transformation"] in ["yes", "true", "True", "on"]
     if prefix and prefix[-1] != '/': prefix = prefix + "/"
     
     corpus_sep_pattern = re.compile(r"#BOS(?:(?!#EOS).+\n)+\#EOS\s\d+")
