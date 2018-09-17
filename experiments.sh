@@ -44,9 +44,8 @@ function gf_nfcv {
 
     for fold in {1..9}; do
         gf_with_timeout "$TMP/grammars/gf-$fold/grammargfconcrete.gfo" "$TMP/negra/test-$fold-gf.sent" \
-              | sed --file "$SCRIPTS/gf-escapes-rev.sed" \
               | $PYTHON $SCRIPTS/parse_gf_output.py "$TMP/negra/test-$fold.sent" \
-              > >(sed 's/[[:digit:]]:[[:digit:]]\+//g' | sed 's:$(:_SP_OPEN_:g;s:(_SP_OPEN_ ():(_SP_OPEN_ _P_OPEN_):g;s:(_SP_OPEN_ )):(_SP_OPEN_ _P_CLOSE_):g' | $DISCO treetransforms --inputfmt=bracket | sed 's:_SP_OPEN_:$(:g;s:_P_OPEN_:(:g;s:_P_CLOSE_:):g' | $PYTHON $SCRIPTS/fill_sentence_id.py "$TMP/negra/test-$fold.sent" >> "$TMP/results/gf-predictions.export") \
+              > >($DISCO treetransforms --inputfmt=bracket | $PYTHON $SCRIPTS/gf-escapes-rev.py | $PYTHON $SCRIPTS/fill_sentence_id.py "$TMP/negra/test-$fold.sent" >> "$TMP/results/gf-predictions.export") \
             2>> "$TMP/results/gf-times.tsv" \
              || fail_and_cleanup "results/gf-predictions.export" "results/gf-times.tsv"
     done
@@ -72,6 +71,29 @@ function discodop_nfcv {
         
         tail -n+2 "$TMP/grammars/discodop-$fold/stats.tsv" >> "$TMP/results/discodop-times.tsv"
         cat "$TMP/grammars/discodop-$fold/plcfrs.export" >> "$TMP/results/discodop-predictions.export"
+    done
+        
+    $DISCO eval "$TMP/negra/test-1-9.export" "$TMP/results/discodop-predictions.export" \
+         > "$RESULTS/discodop-tfcv-scores.txt" \
+        || fail_and_cleanup
+    
+    $PYTHON $SCRIPTS/averages.py mean 3 1 < "$TMP/results/discodop-times.tsv" > "$RESULTS/discodop-times-mean.tsv" \
+        || fail_and_cleanup
+    $PYTHON $SCRIPTS/averages.py median 3 1 < "$TMP/results/discodop-times.tsv" > "$RESULTS/discodop-times-median.tsv" \
+        || fail_and_cleanup
+}
+
+function discodop_dop_nfcv {
+    assert_folder_structure
+    assert_tfcv_negra_files
+    assert_tfcv_discodop_files
+
+    for fold in {1..9}; do
+        $DISCO runexp "$TMP/grammars/discodop-$fold-dop.prm" # &> /dev/null \
+            #|| fail_and_cleanup "grammars/discodop-$fold-dop"
+        
+        tail -n+2 "$TMP/grammars/discodop-$fold-dop/stats.tsv" >> "$TMP/results/discodop-dop-times.tsv"
+        cat "$TMP/grammars/discodop-$fold-dop/dop.export" >> "$TMP/results/discodop-dop-predictions.export"
     done
         
     $DISCO eval "$TMP/negra/test-1-9.export" "$TMP/results/discodop-predictions.export" \
@@ -206,6 +228,12 @@ function assert_tfcv_discodop_files {
                 | sed "s:{TEST}:$TMP/negra/test-$fold.export:" \
                 | sed "s:{MAXLENGTH}:$MAXLENGTH:" \
                 | sed "s:{EVALFILE}:$DISCODOP_EVAL:" > "$TMP/grammars/discodop-$fold.prm"
+        fi
+        if ! [ -f "$TMP/grammars/discodop-$fold-dop.prm" ]; then
+            sed "s:{TRAIN}:$TMP/negra/train-$fold.export:" templates/discodop-dop.prm \
+                | sed "s:{TEST}:$TMP/negra/test-$fold.export:" \
+                | sed "s:{MAXLENGTH}:$MAXLENGTH:" \
+                | sed "s:{EVALFILE}:$DISCODOP_EVAL:" > "$TMP/grammars/discodop-$fold-dop.prm"
         fi
     done
 }
