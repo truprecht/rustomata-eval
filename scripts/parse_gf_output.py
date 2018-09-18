@@ -23,7 +23,7 @@ if __name__ == "__main__":
 
     assert len(argv) == 2, "use %s <sentence file>" %argv[0]
 
-    deriv = re.compile(r"""^[^>]+> (\(.*\))$""")
+    deriv = re.compile(r"""^[^>]+> (\(VROOT.*\))$""")
     pos_annot = re.compile(r"""(\([^\d\s]+)\d:\d+""")
     illegalderiv = re.compile(r"""^\([^\s]+ [^\(\)]+\)$""")
     time = re.compile(r"""^(\d+) msec$""")
