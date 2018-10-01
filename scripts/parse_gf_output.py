@@ -23,7 +23,7 @@ if __name__ == "__main__":
 
     assert len(argv) == 2, "use %s <sentence file>" %argv[0]
 
-    deriv = re.compile(r"""^[^>]+> (\(VROOT.*\))$""")
+    deriv = re.compile(r"""^[^>]+> (\(.*\))$""")
     pos_annot = re.compile(r"""(\([^\d\s]+)\d:\d+""")
     illegalderiv = re.compile(r"""^\([^\s]+ [^\(\)]+\)$""")
     time = re.compile(r"""^(\d+) msec$""")
@@ -31,6 +31,8 @@ if __name__ == "__main__":
     sentence = re.compile(r"""^(\d+)\s+(.*)$""")
     
     def illegal_deriv(input_words, deriv):
+        vroot = re.compile(r"""^\(VROOT.*\)$""")
+        if not vroot.match(deriv): return True
         words_with_pos = re.compile(r"""\(([^\s]+) ([^\(\)\s]+)\)""")
         wps = words_with_pos.findall(deriv)
         if not wps: return True
