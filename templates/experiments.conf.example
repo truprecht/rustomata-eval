@@ -6,7 +6,6 @@ MAXLENGTH=20
 # paths
 TMP="/tmp/rustomata-cs-eval"
 RESULTS="results"
-NEGRA="$HOME/negra/negra-corpus.utf"
 SCRIPTS="scripts"
 
 # tools
