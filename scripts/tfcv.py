@@ -1,3 +1,9 @@
+# Splits a given corpus in export format into ten folds of the same size.
+# These splits are then saved into <prefix>/test-(0|..|9).export. Furthermore,
+# this will create the files <prefix>/train-(0|..|9).export that contain all
+# but the trees in the corresponding test file and files with the ending ".sent"
+# that only contain the word - POS pairs.
+
 import re
 
 def ten_folds(indices):

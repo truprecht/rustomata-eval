@@ -1,3 +1,5 @@
+# Unescapes parse trees.
+
 import re
 
 def gf_unescape(word):

@@ -1,3 +1,6 @@
+# Parses the output of GF and prints the parse trees in bracket format
+# to stdout and the parse time to stderr.
+
 from sys import stderr
 
 def eprint(*args, **kwargs):

@@ -1,3 +1,8 @@
+# Fills a list of trees in export format with missing sentences. These missing sentences are
+# read from a list of all sentences for that should be a tree in the given list.
+# E.g. suppose there is a list of parse trees, but somehow the second tree with id "3"
+# is missing, then this script prints the list plus a noparse tree for the sentence with id "3".
+
 if __name__ == "__main__":
     import re
     from sys import argv, stdin

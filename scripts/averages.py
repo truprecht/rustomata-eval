@@ -1,11 +1,9 @@
+# This scripts reads a given table, groups the entries by one given column name
+# and prints aggregated columns (e.g. the sum of all entries in a group)
+# of the original table.
+
 import numpy as np
 import pandas as p
-
-def key_extractor(index = None):
-    if not index:
-        return (lambda x: None)
-    else:
-        return (lambda x: x[index])
 
 def options(args):
     columns = { "ops": [], "group": None }

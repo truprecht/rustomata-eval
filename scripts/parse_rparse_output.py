@@ -1,3 +1,6 @@
+# Parses the output of rparse and prints the parse trees to stdout
+# and the parse time to stderr.
+
 def format(l):
     return "%d\t%f\t%d" %(l[0], l[1], 1 if l[2] else 0)
 
