@@ -2,7 +2,6 @@
 set -Ceu
 
 # read experiments.conf, if not present read template
-
 source templates/experiments.conf.example
 if [ -f experiments.conf ]; then
     source experiments.conf
@@ -12,9 +11,15 @@ fi
 
 # this section contains the top-level experiment functions for each parser,
 # they will create tsv files for the parse time of each sentence in 
-# <RESULTS>/<parser>-time.tsv and discodop's output for the accuracy in
-# <RESULTS>/<parser>-scores.txt 
+# <RESULTS>/<parser>-<corpus>-time-(mean|median).tsv and discodop's output for the accuracy in
+# <RESULTS>/<parser>-<corpus>-scores.txt 
 
+# IN:
+# - PARAMETERS: $1 – corpus file
+# - FILES: $1
+# OUT:
+# - FILES: $TMP/<basename of $1>/results/rparse-(times.tsv|predictions.export),
+#          $RESULTS/rparse-<basename of $1>-(scores|times-(mean|median)).tsv
 function _rparse_ {
     corpus=`basename $1`
     assert_folder_structure "$corpus"
@@ -39,6 +44,12 @@ function _rparse_ {
         || fail_and_cleanup
 }
 
+# IN:
+# - PARAMETERS: $1 – corpus file
+# - FILES: $1
+# OUT:
+# - FILES: $TMP/<basename of $1>/results/gf-(times.tsv|predictions.export),
+#          $RESULTS/gf-<basename of $1>-(scores|times-(mean|median)).tsv
 function _gf_ {
     corpus=`basename $1`
     assert_folder_structure "$corpus"
@@ -64,6 +75,12 @@ function _gf_ {
         || fail_and_cleanup
 }
 
+# IN:
+# - PARAMETERS: $1 – corpus file
+# - FILES: $1, templates/discodop.prm
+# OUT:
+# - FILES: $TMP/<basename of $1>/results/discodop-(times.tsv|predictions.export),
+#          $RESULTS/discodop-<basename of $1>-(scores|times-(mean|median)).tsv
 function _discolcfrs_ {
     corpus=`basename $1`
     assert_folder_structure "$corpus"
@@ -89,6 +106,12 @@ function _discolcfrs_ {
         || fail_and_cleanup
 }
 
+# IN:
+# - PARAMETERS: $1 – corpus file
+# - FILES: $1, templates/discodop-dop.prm
+# OUT:
+# - FILES: $TMP/<basename of $1>/results/discodop-dop-(times.tsv|predictions.export),
+#          $RESULTS/discodop-dop-<basename of $1>-(scores|times-(mean|median)).tsv
 function _discodop_ {
     corpus=`basename $1`
     assert_folder_structure "$corpus"
@@ -115,6 +138,12 @@ function _discodop_ {
         || fail_and_cleanup
 }
 
+# IN:
+# - PARAMETERS: $1 – corpus file
+# - FILES: $1
+# OUT:
+# - FILES: $TMP/<basename of $1>/results/rustomata-(times.tsv|predictions.export),
+#          $RESULTS/rustomata-<basename of $1>-(scores|times-(mean|median)).tsv
 function _rustomata_ {
     corpus=`basename $1`
     assert_folder_structure "$corpus"
@@ -140,9 +169,15 @@ function _rustomata_ {
 }
 
 # this section contains the function to evaluate the meta-parameters for
-# rustomata, the results are stored in <RESULTS>/rustomata-ofcv-scores.txt and
-# <RESULTS>/rustomata-ofcv-times-(mean|median).csv
-
+# rustomata, the results are stored in $RESULTS/rustomata-ofcv-scores.tsv and
+# $RESULTS/rustomata-ofcv-times-(mean|median).tsv
+# IN:
+# - PARAMETERS: $1 – corpus file
+# - FILES: $1
+# OUT:
+# - FILES: $TMP/<basename of $1>/results/rustomata-ofcv-$BEAM-$CAN-(times.tsv|predictions.export)
+#          where $BEAM is one of $RUSTOMATA_BEAMS and $CAN is one of $RUSTOMATA_CANDIDATES,
+#          $RESULTS/rustomata-ofcv-<basename of $1>-(scores|times-(median|mean)).tsv
 function _rustomata_dev_ {
     corpus=`basename $1`
     assert_folder_structure "$corpus"
@@ -178,7 +213,12 @@ function _rustomata_dev_ {
     done
 }
 
-# wraps `timeout` around gf
+# wraps `/bin/timeout` around gf to support some basic timeout implementation
+# IN:
+# - PARAMETERS: $1 – gf grammar file, $2 – gf script file
+# - FILES: $1, $2
+# OUT:
+# - STDOUT: gf output and output in the same form as gf if a timeout occurred
 function gf_with_timeout {
     outputs=""
     while read sentence || [ -n "$sentence" ]; do
@@ -197,7 +237,10 @@ function gf_with_timeout {
 }
 
 
-#
+# IN:
+# - PARAMETERS: $1 – corpus name
+# OUT:
+# - FILES: $TMP/$1/(splits|grammars/results)/, $RESULTS
 function assert_folder_structure {
     if ! [ -d "$TMP/$1/splits" ]; then mkdir -p "$TMP/$1/splits"; fi
     if ! [ -d "$TMP/$1/grammars" ]; then mkdir "$TMP/$1/grammars"; fi
@@ -249,6 +292,11 @@ function assert_tfcv_rustomata_files {
     fi
 }
 
+# IN:
+# - PARAMETERS: $1 – corpus name
+# - FILES: templates/discodop[-dop].prm
+# OUT:
+# - FILES: $TMP/$1/grammars/discodop-(0|..|9)[-dop].prm
 function assert_tfcv_discodop_files {
     for fold in {0..9}; do
         if ! [ -f "$TMP/$1/grammars/discodop-$fold.prm" ]; then
@@ -266,6 +314,11 @@ function assert_tfcv_discodop_files {
     done
 }
 
+# IN:
+# - PARAMETERS: $1 – corpus name
+# - FILES: $TMP/$1/splits/train-(0|..|9).export, $TMP/$1/splits/test-(0|..|9).sent
+# OUT:
+# - FILES: $TMP/$1/grammars/gf-(0|..|9)/*, $TMP/$1/splits/test-(0|..|9)-gf.sent
 function assert_tfcv_gf_files {
     for fold in {0..9}; do
         if ! [ -d "$TMP/$1/grammars/gf-$fold" ]; then
@@ -286,6 +339,11 @@ function assert_tfcv_gf_files {
     done
 }
 
+# IN:
+# - PARAMETERS: $1 – corpus name
+# - FILES: $TMP/$1/splits/train-(0|..|9).export
+# OUT:
+# - FILES: $TMP/$1/grammars/rparse-train-(0|..|9)/
 function assert_tfcv_rparse_files {
     for fold in {0..9}; do
         if ! [ -f "$TMP/$1/grammars/rparse-train-$fold" ]; then
@@ -295,6 +353,8 @@ function assert_tfcv_rparse_files {
     done
 }
 
+# IN:
+# - PARAMETERS: $* files or folders to remove with $TRASH before exiting
 function fail_and_cleanup {
     for f in $@; do
         if [ -d "$TMP/$f" ] || [ -f "$TMP/$f" ]; then
@@ -307,7 +367,8 @@ function fail_and_cleanup {
 
 
 # main script that runs the procedures for given parameters
-
+# clean the results of --clean was given as third parameter,
+# clean whole $TMP if --clean-all was given
 if (( $# > 2 )) && [[ "$3" =~ ^--clean ]]; then
     corpus=`basename $2`
     if [ -d "$RESULTS" ]; then $TRASH "$RESULTS"; fi
@@ -320,5 +381,5 @@ if (( $# > 2 )) && [[ "$3" =~ ^--clean ]]; then
 fi
 
 if (( $# < 2)) || ! _$1_ $2; then
-    echo "use $0 (rustomata|gf|rparse|discolcfrs|discodop|rustomata_dev) <corpus> [--clean-[all]]";
+    echo "use $0 (rustomata|gf|rparse|discolcfrs|discodop|rustomata_dev) <corpus> [--clean[-all]]";
 fi
