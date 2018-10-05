@@ -19,16 +19,24 @@ def tokens(treestr):
         yield match.group(0)
 
 
-def fix_discodop_output(tree):
-    # add defaults for export fields removed by discodop
-    # removes some additional `--`s that were added by discodop
+def fix_bos(tree):
+    reg = re.compile("^(#BOS \d+)(\s+%%.*)?$")
+    treelines = tree.splitlines()
+
+    try:
+        (fst, snd) = reg.search(treelines[0]).groups()
+        treelines[0] = "{} 0 0 0{}".format(fst, snd if snd else "")
+    except:
+        pass
+    
+    return "\n".join(treelines)
+
+
+def remove_snd_col(tree):
     reg = re.compile("^#BOS \d+$")
     treelines = tree.splitlines()
 
-    if reg.match(treelines[0]):
-        treelines[0] += " 0 0 0"
-
-    reg = re.compile("^([^\s]+\s+)--\s(.*)$")
+    reg = re.compile("^([^\s]+\s+)[^\s]+\s+(.*)$")
     for i in range(1, len(treelines) - 1):
         prefix = reg.match(treelines[i])
         if not prefix is None:
@@ -46,13 +54,27 @@ def get_optional_arguments(dic):
                 break
     return dic
 
+def word_pos(tree, export_format):
+    word_pos_pattern_v3 = re.compile(r"(^[^#\s]+)\s+([^#\s]+)", re.MULTILINE)
+    word_pos_pattern_v4 = re.compile(r"(^[^#\s]+)\s+[^\s]+\s+([^#\s]+)", re.MULTILINE)
+
+    if export_format == "3":
+        return word_pos_pattern_v3.findall(tree)
+    elif export_format == "4":
+        return word_pos_pattern_v4.findall(tree)
+    else:
+        raise Exception("export format not supported")
+    
+
+
 if __name__ == "__main__":
-    from sys import argv
+    from sys import argv, stderr
     help = """use %s <NEGRA FILE> [OPTIONS]
               where OPTIONS is some combination of
                 --max-length=<max tokens of test sentence>
                 --out-prefix=<folder to put files into>
-                --fix-discodop-transformation=(true|false*)
+                --remove-snd-col=(true|false*)
+                --fix-bos=(true|false*)
                 --help""" %argv[0]
 
     assert len(argv) > 1, help
@@ -60,33 +82,51 @@ if __name__ == "__main__":
         print(help)
         exit(0)
 
-    optional_arguments = get_optional_arguments({ "max-length": None, "out-prefix": "", "fix-discodop-transformation": None })
-    max_length, prefix, fix = int(optional_arguments["max-length"]) if optional_arguments["max-length"] else 1000, optional_arguments["out-prefix"], optional_arguments["fix-discodop-transformation"] in ["yes", "true", "True", "on"]
+    optional_arguments = get_optional_arguments({ "max-length": None, "out-prefix": "", "fix-bos": None, "remove-snd-col": None })
+    
+    max_length = int(optional_arguments["max-length"]) if optional_arguments["max-length"] else 1000
+    
+    prefix = optional_arguments["out-prefix"]
     if prefix and prefix[-1] != '/': prefix = prefix + "/"
     
+    fix = optional_arguments["fix-bos"] in ["yes", "true", "True", "on"]
+    rm_snd = optional_arguments["remove-snd-col"] in ["yes", "true", "True", "on"]
+    def post_proc(tree):
+        if fix_bos:
+            tree = fix_bos(tree)
+        if rm_snd:
+            tree = remove_snd_col(tree)
+        return tree
+    
     corpus_sep_pattern = re.compile(r"#BOS(?:(?!#EOS).+\n)+\#EOS\s\d+")
-    word_pos_pattern = re.compile(r"(^[^#\s]+)\s+([^#\s]+)", re.MULTILINE)
     id_pattern = re.compile(r"^#BOS (\d+)")
+    format_pattern = re.compile(r"#FORMAT (\d)")
     
     with open(argv[1]) as corpus_file:
-        trees = corpus_sep_pattern.findall(corpus_file.read())
+        file_contents = corpus_file.read()
+        try:
+            form = format_pattern.search(file_contents).group(1)
+        except:
+            print("could not find format specification, using v4", file=stderr)
+            form = "4"
+        trees = corpus_sep_pattern.findall(file_contents)
 
         sub_corpora = [[trees[index] for index in range(first, last +1)] for (first, last) in ten_folds(len(trees))]
 
         for (fold, test) in enumerate(sub_corpora):
-            train = [tree if not fix else fix_discodop_output(tree) for (tfold, sub_corpus) in enumerate(sub_corpora) if tfold != fold for tree in sub_corpus]
-            if fix: test = [fix_discodop_output(tree) for tree in test]
+            train = [post_proc(tree) for (tfold, sub_corpus) in enumerate(sub_corpora) if tfold != fold for tree in sub_corpus]
+            test = [post_proc(tree) for tree in test]
 
             with open("%strain-%d.export" %(prefix, fold), "w") as trainfile:
-                trainfile.write("#FORMAT 3\n" + "\n".join([tree for tree in train]))
+                trainfile.write("#FORMAT {}\n".format(form) + "\n".join([tree for tree in train]))
             with open("%stest-%d.export" %(prefix, fold), "w") as testfile:
-                testfile.write("#FORMAT 3\n" + "\n".join([testtree for testtree in test if len(list(tokens(testtree))) <= max_length]))
+                testfile.write("#FORMAT {}\n".format(form) + "\n".join([testtree for testtree in test if len(list(tokens(testtree))) <= max_length]))
             
             with open("%strain-%d.sent" %(prefix, fold), "w") as trainsents:
                 trainsents.write(
-                    "\n".join([id_pattern.search(tree).group(1) + "\t" + " ".join(["/".join(wp) for wp in word_pos_pattern.findall(tree)]) for tree in train])
+                    "\n".join([id_pattern.search(tree).group(1) + "\t" + " ".join(["/".join(wp) for wp in word_pos(tree, form)]) for tree in train])
                 )
             with open("%stest-%d.sent" %(prefix, fold), "w") as testsents:
                 testsents.write(
-                    "\n".join([id_pattern.search(tree).group(1)+ "\t" + " ".join(["/".join(wp) for wp in word_pos_pattern.findall(tree)]) for tree in test if len(list(tokens(tree))) <= max_length])
+                    "\n".join([id_pattern.search(tree).group(1)+ "\t" + " ".join(["/".join(wp) for wp in word_pos(tree, form)]) for tree in test if len(list(tokens(tree))) <= max_length])
                 )

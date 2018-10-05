@@ -215,15 +215,15 @@ function assert_corpus_files {
     if (( $# != 2 )) || ! [ -d "$TMP/$2" ]; then return 1; fi
 
     if ! [ -f "$TMP/$2/low-punctuation.export" ]; then
-        echo "#FORMAT 3" > "$TMP/$2/low-punctuation.export"
+        echo "#FORMAT 4" > "$TMP/$2/low-punctuation.export"
         $DISCO treetransforms --punct=move "$1" >> "$TMP/$2/low-punctuation.export" \
             || fail_and_cleanup "$2/low-punctuation.export"
     fi
     if ! [ -f "$TMP/$2/splits/test-0.export" ]; then
-        $PYTHON $SCRIPTS/tfcv.py "$TMP/$2/low-punctuation.export" --out-prefix="$TMP/$2/splits" --max-length=$MAXLENGTH --fix-discodop-transformation=true
+        $PYTHON $SCRIPTS/tfcv.py "$TMP/$2/low-punctuation.export" --out-prefix="$TMP/$2/splits" --max-length=$MAXLENGTH --fix-bos=true
     fi
     if ! [ -f "$TMP/$2/splits/test-1-9.export" ]; then
-        echo "#FORMAT 3" > "$TMP/$2/splits/test-1-9.export"
+        echo "#FORMAT 4" > "$TMP/$2/splits/test-1-9.export"
         for fold in {1..9}; do
             tail -n+2 "$TMP/$2/splits/test-$fold.export" >> "$TMP/$2/splits/test-1-9.export"
             echo "" >> "$TMP/$2/splits/test-1-9.export"
