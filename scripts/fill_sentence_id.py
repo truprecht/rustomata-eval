@@ -1,3 +1,5 @@
+# Adds the sentence id to a given list of trees in export format.
+
 if __name__ == "__main__":
     import re
     from sys import stdin, argv

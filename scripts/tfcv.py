@@ -20,9 +20,9 @@ def ten_folds(indices):
 
 def tokens(treestr):
     # yields tokens in a tree
-    reg = re.compile("^[^#\s]+", flags = re.MULTILINE)
+    reg = re.compile("^(#|[^#][^\s]*)\s", flags = re.MULTILINE)
     for match in reg.finditer(treestr):
-        yield match.group(0)
+        yield match.group(1)
 
 
 def fix_bos(tree):
@@ -61,8 +61,8 @@ def get_optional_arguments(dic):
     return dic
 
 def word_pos(tree, export_format):
-    word_pos_pattern_v3 = re.compile(r"(^[^#\s]+)\s+([^#\s]+)", re.MULTILINE)
-    word_pos_pattern_v4 = re.compile(r"(^[^#\s]+)\s+[^\s]+\s+([^#\s]+)", re.MULTILINE)
+    word_pos_pattern_v3 = re.compile(r"^(#|[^#][^\s]*)\s+([^#\s]+)", re.MULTILINE)
+    word_pos_pattern_v4 = re.compile(r"^(#|[^#][^\s]*)\s+[^\s]+\s+([^#\s]+)", re.MULTILINE)
 
     if export_format == "3":
         return word_pos_pattern_v3.findall(tree)
