@@ -1,29 +1,46 @@
 #!/bin/bash
+# this bash file is sourced in each execution of ../experiments.sh
 
-# max sentence length
+# maximum sentence length to consider in the test / evaluation sets
 MAXLENGTH=20
 
 # paths
+## temp folder – contains intermediate results and extracted artifacts
 TMP="/tmp/rustomata-cs-eval"
+## results – where the final results are stored
 RESULTS="results"
+## the scripts folder of this repository
 SCRIPTS="scripts"
 
 # tools
+## the compiled rustomata binary
 RUSTOMATA="$HOME/rustomata/target/release/rustomata"
+## the vanda-haskell binary
 VANDA="$HOME/.local/bin/vanda"
+## the rparse binary
 RPARSE="java -jar $HOME/rparse/rparse.jar"
+## the grammatical framework binary
 GF="$HOME/.local/bin/gf"
+### the disco-dop binary
 DISCO="discodop"
+## the python3 binary
 PYTHON="python"
 
 # approximation and other parameters
+## default number of coarse parse candidates that rustomata considers
 RUSTOMATA_D_CANDIDATES="10000"
+## default beam width in rustomata
 RUSTOMATA_D_BEAM="∞"
+## set of beam widths considered in rustomata's grid search
 RUSTOMATA_BEAMS=("1000" "10000" "100000" "∞")
+## set of candidate numbers considered in rustomata's grid search
 RUSTOMATA_CANDIDATES=("1" "10" "100" "1000" "10000" "100000")
+## timeout for rparse in seconds
 RPARSE_TIMEOUT="30"
+## timeout for grammatical framework in seconds
 GF_TIMEOUT="30"
+## evaluation parameter file for disco-dop
 DISCODOP_EVAL="templates/discodop-eval.prm"
 
 # command to remove old files with $TRASH <file>
-TRASH="rm -rf"
+TRASH="gio trash"
