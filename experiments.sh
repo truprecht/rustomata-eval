@@ -96,7 +96,7 @@ function _discolcfrs_ {
         cat "$TMP/$corpus/grammars/discodop-$fold/plcfrs.export" >> "$TMP/$corpus/results/discodop-predictions.export"
     done
         
-    $DISCO eval "$TMP/$corpus/negra/test-1-9.export" "$TMP/$corpus/results/discodop-predictions.export" \
+    $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/discodop-predictions.export" \
          > "$RESULTS/discodop-tfcv-scores.txt" \
         || fail_and_cleanup
     
@@ -128,7 +128,7 @@ function _discodop_ {
         cat "$TMP/$corpus/grammars/discodop-$fold-dop/dop.export" >> "$TMP/$corpus/results/discodop-dop-predictions.export"
     done
         
-    $DISCO eval "$TMP/$corpus/negra/test-1-9.export" "$TMP/$corpus/results/discodop-dop-predictions.export" \
+    $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/discodop-dop-predictions.export" \
          > "$RESULTS/discodop-dop-tfcv-scores.txt" \
         || fail_and_cleanup
     
