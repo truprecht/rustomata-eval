@@ -20,7 +20,7 @@ As for disco-dop, the paths of these binaries are set in a local configuration f
     cp templates/experiments.conf.example experiments.conf
     $EDITOR experiments.conf
     ```
-* Run each experiment separately. Call `experiments.sh` with the parser as first argument and the corpus as second argument.
+* Run each experiment separately. Call [experiments.sh](./experiments.sh) with the parser as first argument and the corpus as second argument.
     ```bash
     bash experiments.sh rustomata ~/negra/negra-corpus.export
     ```
@@ -56,3 +56,8 @@ The implementation of the evaluation using these scripts consists of
 5. evaluate the parses using the gold parse trees of the parsed evaluation splits.
 
 The grid search for Rustomata uses the test split from step 3 and parses the test set using a grammar extracted from the corresponding training set.
+
+## License
+
+This project redistributes some python scripts in [scripts/panda](./scripts/panda/) from [panda-parser](https://github.com/kilian-gebhardt/panda-parser/).
+To avoid further dependencies, we omit a submodule and publish this project under terms of the GPL.

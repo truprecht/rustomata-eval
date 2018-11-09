@@ -58,9 +58,9 @@ function _gf_ {
 
     echo -e "len\ttime\tsuccess" >> "$TMP/$corpus/results/gf-times.tsv"
     for fold in {1..9}; do
-        gf_with_timeout "$TMP/$corpus/grammars/gf-$fold/grammargfconcrete.gfo" "$TMP/$corpus/splits/test-$fold-gf.sent" \
+        gf_with_timeout "$TMP/$corpus/grammars/gf-$fold/grammargfabstract.pgf" "$TMP/$corpus/splits/test-$fold-gf.sent" \
               | $PYTHON $SCRIPTS/parse_gf_output.py "$TMP/$corpus/splits/test-$fold.sent" \
-              > >($DISCO treetransforms --inputfmt=bracket | $PYTHON $SCRIPTS/gf-escapes-rev.py | $PYTHON $SCRIPTS/fill_sentence_id.py "$TMP/$corpus/splits/test-$fold.sent" >> "$TMP/$corpus/results/gf-predictions.export") \
+              > >($PYTHON $SCRIPTS/gf-escapes-rev.py >> "$TMP/$corpus/results/gf-predictions.export") \
             2>> "$TMP/$corpus/results/gf-times.tsv" \
              || fail_and_cleanup "results/gf-predictions.export" "results/gf-times.tsv"
     done
@@ -222,14 +222,14 @@ function _rustomata_dev_ {
 function gf_with_timeout {
     outputs=""
     while read sentence || [ -n "$sentence" ]; do
-        sentenceoutput="$(echo $sentence | timeout $GF_TIMEOUT $GF $1)"
+        sentenceoutput="$(echo "p \"$sentence\" | vp | sp -command=\"$PYTHON $SCRIPTS/take_first_gf_tree.py\"" | timeout $GF_TIMEOUT $GF $1)"
         ec=$?
         if (( $ec == 124 )); then       # timeout
-            outputs="$outputs\nTIMEOUT> (_:0)\n${GF_TIMEOUT}000 msec"
+            outputs="$outputs\nTIMEOUT>\n${GF_TIMEOUT}000 msec"
         elif (( $ec != 0 )); then       # some other error
             return $ec
         else                            # no error, propagate output
-            lines=$(echo "$sentenceoutput" | grep -P -A1 '^[^>]+> \K.+' | head -n2)
+            lines=$(echo "$sentenceoutput" | grep -P -A1 '^[^>]+>' | head -n2 | sed 's:[^>]\+>[[:space:]]\+::')
             outputs="$outputs\n$lines"
         fi
     done <"$2"
@@ -320,11 +320,25 @@ function assert_tfcv_discodop_files {
 # OUT:
 # - FILES: $TMP/$1/grammars/gf-(0|..|9)/*, $TMP/$1/splits/test-(0|..|9)-gf.sent
 function assert_tfcv_gf_files {
+    if ! [ -d "$TMP/$1/grammars/gf-all" ]; then
+        $RPARSE -doTrain -train "$TMP/$1/low-punctuation.export" -headFinder negra -trainSave "$TMP/$1/grammars/gf-all" &> /dev/null \
+            || fail_and_cleanup "grammars/$1/gf-all"
+    fi
     for fold in {0..9}; do
         if ! [ -d "$TMP/$1/grammars/gf-$fold" ]; then
             $RPARSE -doTrain -train "$TMP/$1/splits/train-$fold.export" -headFinder negra -trainSave "$TMP/$1/grammars/gf-$fold" &> /dev/null \
                 || fail_and_cleanup "grammars/$1/gf-$fold"
-            $GF --make "$TMP/$1/grammars/gf-$fold/grammargfconcrete.gf" &> /dev/null \
+            
+            # copy lexer from complete corpus, such that all terminals are available
+            cp "$TMP/$1/grammars/gf-all/grammargf.lex" "$TMP/$1/grammars/gf-$fold/grammargf.lex"
+            cp "$TMP/$1/grammars/gf-all/grammargflexconcrete.gf" "$TMP/$1/grammars/gf-$fold/grammargflexconcrete.gf"
+            cp "$TMP/$1/grammars/gf-all/grammargflexabstract.gf" "$TMP/$1/grammars/gf-$fold/grammargflexabstract.gf"
+            # copy lexer probabilities from complete corpus
+            grep -vP "^fun\d+" "$TMP/$1/grammars/gf-all/grammargf.probs" > "$TMP/$1/grammars/gf-$fold/grammargf.probs1"
+            grep -P "^fun\d+" "$TMP/$1/grammars/gf-$fold/grammargf.probs" >> "$TMP/$1/grammars/gf-$fold/grammargf.probs1"
+            mv "$TMP/$1/grammars/gf-$fold/grammargf.probs1" "$TMP/$1/grammars/gf-$fold/grammargf.probs"
+            
+            $GF --probs="$TMP/$1/grammars/gf-$fold/grammargf.probs" --make -D "$TMP/$1/grammars/gf-$fold/" "$TMP/$1/grammars/gf-$fold/grammargfconcrete.gf" &> /dev/null \
                 || fail_and_cleanup "$1/grammars/gf-$fold"
         fi
 
@@ -332,8 +346,7 @@ function assert_tfcv_gf_files {
             sed 's/^[[:digit:]]\+[[:space:]]\+//' "$TMP/$1/splits/test-$fold.sent" \
                  | sed 's#/[^[:space:]/]\+[[:space:]]# #g' \
                  | sed 's#/[^[:space:]/]\+$# #g' \
-                 | sed --file "$SCRIPTS/gf-escapes.sed" \
-                 | sed 's#^.\+$#p -bracket "&"#' > "$TMP/$1/splits/test-$fold-gf.sent" \
+                 | sed --file "$SCRIPTS/gf-escapes.sed" > "$TMP/$1/splits/test-$fold-gf.sent" \
                 || fail_and_cleanup "$1/splits/test-$fold-gf.sent"
         fi
     done
