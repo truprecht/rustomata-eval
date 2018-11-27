@@ -34,7 +34,7 @@ function _rparse_ {
             || fail_and_cleanup "$corpus/results/rparse-predictions.export" "$corpus/results/rparse-times.tsv"
     done
         
-    $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/rparse-predictions.export" \
+    $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/rparse-predictions.export" "$DISCODOP_EVAL" \
          > "$RESULTS/rparse-$corpus-scores.txt" \
         || fail_and_cleanup
     
@@ -65,7 +65,7 @@ function _gf_ {
              || fail_and_cleanup "results/gf-predictions.export" "results/gf-times.tsv"
     done
 
-    $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/gf-predictions.export" \
+    $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/gf-predictions.export" "$DISCODOP_EVAL" \
          > "$RESULTS/gf-$corpus-scores.txt" \
         || fail_and_cleanup
     
@@ -96,7 +96,7 @@ function _discolcfrs_ {
         cat "$TMP/$corpus/grammars/discodop-$fold/plcfrs.export" >> "$TMP/$corpus/results/discodop-predictions.export"
     done
         
-    $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/discodop-predictions.export" \
+    $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/discodop-predictions.export" "$DISCODOP_EVAL" \
          > "$RESULTS/discodop-tfcv-scores.txt" \
         || fail_and_cleanup
     
@@ -128,7 +128,7 @@ function _discodop_ {
         cat "$TMP/$corpus/grammars/discodop-$fold-dop/dop.export" >> "$TMP/$corpus/results/discodop-dop-predictions.export"
     done
         
-    $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/discodop-dop-predictions.export" \
+    $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/discodop-dop-predictions.export" "$DISCODOP_EVAL" \
          > "$RESULTS/discodop-dop-tfcv-scores.txt" \
         || fail_and_cleanup
     
@@ -158,7 +158,7 @@ function _rustomata_ {
             || fail_and_cleanup "results/rustomata-times.tsv" "results/rustomata-predictions.export"
     done
         
-    $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/rustomata-predictions.export" \
+    $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/rustomata-predictions.export" "$DISCODOP_EVAL" \
         >> $RESULTS/rustomata-scores.txt \
         || fail_and_cleanup
     
@@ -195,7 +195,7 @@ function _rustomata_dev_ {
                 || fail_and_cleanup "results/rustomata-ofcv-$beam-$cans-times.csv" "results/rustomata-ofcv-$beam-$cans-predictions.export"
             
             echo -ne "$beam\t$cans\t" >> $RESULTS/rustomata-ofcv-$corpus-scores.tsv
-            $DISCO eval $TMP/$corpus/splits/test-0.export $TMP/$corpus/results/rustomata-ofcv-$beam-$cans-predictions.export \
+            $DISCO eval $TMP/$corpus/splits/test-0.export $TMP/$corpus/results/rustomata-ofcv-$beam-$cans-predictions.export "$DISCODOP_EVAL" \
                  | grep -oP "labeled (precision|recall|f-measure):\s+\K\d+.\d+" \
                  | awk -vRS="\n" -vORS="\t" '1' >> $RESULTS/rustomata-ofcv-$corpus-scores.tsv \
                 || fail_and_cleanup
@@ -229,7 +229,7 @@ function gf_with_timeout {
         elif (( $ec != 0 )); then       # some other error
             return $ec
         else                            # no error, propagate output
-            lines=$(echo "$sentenceoutput" | grep -P -A1 '^[^>]+>' | head -n2 | sed 's:[^>]\+>[[:space:]]\+::')
+            lines=$(echo "$sentenceoutput" | grep -P -A1 '^[^>]+>' | head -n2 | sed 's:[^>]\+>[[:space:]]*::')
             outputs="$outputs\n$lines"
         fi
     done <"$2"

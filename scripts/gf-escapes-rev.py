@@ -2,28 +2,25 @@
 
 import re
 
-def gf_unescape(word):
-    return word.replace("LBR", "(") \
-               .replace("RBR", ")") \
-               .replace("PUNCT", ".") \
-               .replace("COMMA", ",") \
-               .replace("MDASH", "--") \
-               .replace("DASH", "-") \
-               .replace("SLASH", "/") \
-               .replace("BACKSLASH", "\\") \
-               .replace("DQ", "\"") \
-               .replace("SQ", "'")
+terminal_escapes = [ (re.compile(pat), r) for (pat, r) in [ ("^MDASH$", "--"), ("DASH", "-"), ("SQ", "'"), ("DQ", "\""), ("BACKSLASH", "\\"), ("SLASH", "/"), ("^COMMA$", ","), ("^PUNCT$", "."), ("^LBR$", "("), ("^RBR$", ")") ] ]
+def gf_unescape_terminal(word):
+    for (regex, replacement) in terminal_escapes:
+        word = regex.sub(lambda _: replacement, word)
+    return word
+
+def gf_unescape_nonterminal(cat):
+    return cat.replace("LBR", "$(") \
+              .replace("COMMA", "$,") \
+              .replace("PUNCT", "$.")
 
 r_line = re.compile(r"""^([^\s]+)\s+([^\s]+)\s+--\s+--\s+(\d+)$""")
 r_inner = re.compile(r""""^\#\d+$""")
 r_pos_with_fanout = re.compile(r"""\d+$""")
-r_dollar_pos = re.compile(r"""\.|,|\(""")
 def word_pos_substitution(match):
     (word, pos, parent) = match.groups()
     if not r_inner.match(word):
-        word = gf_unescape(word)
-    pos = gf_unescape(pos)
-    pos = pos if not r_dollar_pos.match(pos) else "${}".format(pos)
+        word = gf_unescape_terminal(word)
+    pos = gf_unescape_nonterminal(pos)
     pos = r_pos_with_fanout.sub(lambda _: "", pos)
     return "{}\t{}\t--\t--\t{}".format(word, pos, parent)
 
