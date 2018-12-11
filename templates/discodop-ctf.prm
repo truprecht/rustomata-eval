@@ -1,0 +1,7 @@
+stages=[ dict(name='pcfg', mode='pcfg',split=True, markorigin=True),
+         dict(name='plcfrs', mode='plcfrs', prune='pcfg', k=50) ],
+traincorpus=dict( path='{TRAIN}', encoding='utf-8', maxwords=1000, numsents=20000 ),
+testcorpus=dict( path='{TEST}', encoding='utf-8', maxwords={MAXLENGTH}, skiptrain=False, numsents=20000 ),
+postagging=None,
+binarization=dict( method='default', factor='right', h=1, v=1 ),
+evalparam='{EVALFILE}'

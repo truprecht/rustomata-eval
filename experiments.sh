@@ -108,6 +108,38 @@ function _discolcfrs_ {
 
 # IN:
 # - PARAMETERS: $1 – corpus file
+# - FILES: $1, templates/discodop-ctf.prm
+# OUT:
+# - FILES: $TMP/<basename of $1>/results/discodop-ctf-(times.tsv|predictions.export),
+#          $RESULTS/discodop-ctf-<basename of $1>-(scores|times-(mean|median)).tsv
+function _discoctf_ {
+    corpus=`basename $1`
+    assert_folder_structure "$corpus"
+    assert_corpus_files "$1" "$corpus"
+    assert_tfcv_discodop_files "$corpus"
+
+    echo -e "sentid\tlen\telapsedtime" > "$TMP/$corpus/results/discodop-ctf-times.tsv"
+    for fold in {1..9}; do
+        $DISCO runexp "$TMP/$corpus/grammars/discodop-$fold-ctf.prm" &> /dev/null \
+            || fail_and_cleanup "grammars/discodop-$fold-ctf"
+        
+        $PYTHON $SCRIPTS/averages.py --group=sentid --mean=len --sum=elapsedtime < "$TMP/$corpus/grammars/discodop-$fold-ctf/stats.tsv" \
+            | tail -n+2 >> "$TMP/$corpus/results/discodop-ctf-times.tsv"
+        cat "$TMP/$corpus/grammars/discodop-$fold-ctf/plcfrs.export" >> "$TMP/$corpus/results/discodop-ctf-predictions.export"
+    done
+        
+    $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/discodop-ctf-predictions.export" "$DISCODOP_EVAL" \
+         > "$RESULTS/discodop-ctf-tfcv-scores.txt" \
+        || fail_and_cleanup
+    
+    $PYTHON $SCRIPTS/averages.py --group=len --mean=elapsedtime < "$TMP/$corpus/results/discodop-ctf-times.tsv" > "$RESULTS/discodop-ctf-$corpus-times-mean.tsv" \
+        || fail_and_cleanup
+    $PYTHON $SCRIPTS/averages.py --group=len --median=elapsedtime < "$TMP/$corpus/results/discodop-ctf-times.tsv" > "$RESULTS/discodop-ctf-$corpus-times-median.tsv" \
+        || fail_and_cleanup
+}
+
+# IN:
+# - PARAMETERS: $1 – corpus file
 # - FILES: $1, templates/discodop-dop.prm
 # OUT:
 # - FILES: $TMP/<basename of $1>/results/discodop-dop-(times.tsv|predictions.export),
@@ -294,9 +326,9 @@ function assert_tfcv_rustomata_files {
 
 # IN:
 # - PARAMETERS: $1 – corpus name
-# - FILES: templates/discodop[-dop].prm
+# - FILES: templates/discodop[-(dop|ctf)].prm
 # OUT:
-# - FILES: $TMP/$1/grammars/discodop-(0|..|9)[-dop].prm
+# - FILES: $TMP/$1/grammars/discodop-(0|..|9)[-(dop|ctf)].prm
 function assert_tfcv_discodop_files {
     for fold in {0..9}; do
         if ! [ -f "$TMP/$1/grammars/discodop-$fold.prm" ]; then
@@ -310,6 +342,12 @@ function assert_tfcv_discodop_files {
                 | sed "s:{TEST}:$TMP/$1/splits/test-$fold.export:" \
                 | sed "s:{MAXLENGTH}:$MAXLENGTH:" \
                 | sed "s:{EVALFILE}:$DISCODOP_EVAL:" > "$TMP/$1/grammars/discodop-$fold-dop.prm"
+        fi
+        if ! [ -f "$TMP/$1/grammars/discodop-$fold-ctf.prm" ]; then
+            sed "s:{TRAIN}:$TMP/$1/splits/train-$fold.export:" templates/discodop-ctf.prm \
+                | sed "s:{TEST}:$TMP/$1/splits/test-$fold.export:" \
+                | sed "s:{MAXLENGTH}:$MAXLENGTH:" \
+                | sed "s:{EVALFILE}:$DISCODOP_EVAL:" > "$TMP/$1/grammars/discodop-$fold-ctf.prm"
         fi
     done
 }
