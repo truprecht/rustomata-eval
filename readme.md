@@ -30,8 +30,9 @@ As for disco-dop, the paths of these binaries are set in a local configuration f
 
 Currently, support for the following parsers is implemented:
 * Rustomata's Chomsky-Schützenberger parsing implementation via `rustomata`
-* disco-dop's default coarse-to-fine parsing pipeline via `discodop`
-* disco-dop's lcfrs parser vial `discolcfrs`
+* disco-dop's default coarse-to-fine parsing pipeline (pcfg → plcfrs → dop) via `discodop`
+* disco-dop's coarse-to-fine parsing pipeline without DOP (pcfg → plcfrs) via `discoctf`
+* disco-dop's lcfrs parser via `discolcfrs`
 * rparse via `rparse`
 * grammatical framework via `gf`
 
