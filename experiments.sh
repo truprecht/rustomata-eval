@@ -27,7 +27,7 @@ function _rparse_ {
     assert_tfcv_rparse_files "$corpus"
 
     echo -e "len\ttime\tsuccess" >> "$TMP/$corpus/results/rparse-times.tsv"
-    for fold in {1..9}; do
+    for fold in `seq 1 $FOLDS`; do
         $RPARSE -doParse -test "$TMP/$corpus/splits/test-$fold.export" -testFormat export -readModel "$TMP/$corpus/grammars/rparse-train-$fold" -timeout "$RPARSE_TIMEOUT" \
              > >($PYTHON $SCRIPTS/fill_sentence_id.py "$TMP/$corpus/splits/test-$fold.sent" | $PYTHON $SCRIPTS/fill_noparses.py "$TMP/$corpus/splits/test-$fold.sent" >> "$TMP/$corpus/results/rparse-predictions.export")  \
             2> >($PYTHON $SCRIPTS/parse_rparse_output.py >> "$TMP/$corpus/results/rparse-times.tsv") \
@@ -57,7 +57,7 @@ function _gf_ {
     assert_tfcv_gf_files "$corpus"
 
     echo -e "len\ttime\tsuccess" >> "$TMP/$corpus/results/gf-times.tsv"
-    for fold in {1..9}; do
+    for fold in `seq 1 $FOLDS`; do
         gf_with_timeout "$TMP/$corpus/grammars/gf-$fold/grammargfabstract.pgf" "$TMP/$corpus/splits/test-$fold-gf.sent" \
               | $PYTHON $SCRIPTS/parse_gf_output.py "$TMP/$corpus/splits/test-$fold.sent" \
               > >($PYTHON $SCRIPTS/gf-escapes-rev.py >> "$TMP/$corpus/results/gf-predictions.export") \
@@ -88,7 +88,7 @@ function _discolcfrs_ {
     assert_tfcv_discodop_files "$corpus"
 
     echo -e "sentid\tlen\tstage\telapsedtime\tlogprob\tfrags\tnumitems\tgolditems\ttotalgolditems" > "$TMP/$corpus/results/discodop-times.tsv"
-    for fold in {1..9}; do
+    for fold in `seq 1 $FOLDS`; do
         $DISCO runexp "$TMP/$corpus/grammars/discodop-$fold.prm" \
             || fail_and_cleanup "grammars/discodop-$fold"
         
@@ -119,7 +119,7 @@ function _discoctf_ {
     assert_tfcv_discodop_files "$corpus"
 
     echo -e "sentid\tlen\telapsedtime" > "$TMP/$corpus/results/discodop-ctf-times.tsv"
-    for fold in {1..9}; do
+    for fold in `seq 1 $FOLDS`; do
         $DISCO runexp "$TMP/$corpus/grammars/discodop-$fold-ctf.prm" &> /dev/null \
             || fail_and_cleanup "grammars/discodop-$fold-ctf"
         
@@ -151,7 +151,7 @@ function _discodop_ {
     assert_tfcv_discodop_files "$corpus"
 
     echo -e "sentid\tlen\telapsedtime" > "$TMP/$corpus/results/discodop-dop-times.tsv"
-    for fold in {1..9}; do
+    for fold in `seq 1 $FOLDS`; do
         $DISCO runexp "$TMP/$corpus/grammars/discodop-$fold-dop.prm" &> /dev/null \
             || fail_and_cleanup "grammars/discodop-$fold-dop"
         
@@ -183,7 +183,7 @@ function _rustomata_ {
     assert_tfcv_rustomata_files "$corpus"
 
     echo -e "grammarsize\tlen\tgrammarsize_after_filtering\ttime\tresult\tcandidates" >> "$TMP/$corpus/results/rustomata-times.tsv"
-    for fold in {1..9}; do
+    for fold in `seq 1 $FOLDS`; do
         $RUSTOMATA csparsing parse "$TMP/$corpus/grammars/train-$fold.cs" --beam=$RUSTOMATA_D_BEAM --candidates=$RUSTOMATA_D_CANDIDATES --with-pos --with-lines --debug < "$TMP/$corpus/splits/test-$fold.sent" \
             2> >(sed 's: :\t:g' >> "$TMP/$corpus/results/rustomata-times.tsv") \
              | sed 's:_[[:digit:]]::' >> "$TMP/$corpus/results/rustomata-predictions.export" \
@@ -299,7 +299,7 @@ function assert_corpus_files {
     fi
     if ! [ -f "$TMP/$2/splits/test-1-9.export" ]; then
         echo "#FORMAT 4" > "$TMP/$2/splits/test-1-9.export"
-        for fold in {1..9}; do
+        for fold in `seq 1 $FOLDS`; do
             tail -n+2 "$TMP/$2/splits/test-$fold.export" >> "$TMP/$2/splits/test-1-9.export"
             echo "" >> "$TMP/$2/splits/test-1-9.export"
         done
@@ -313,7 +313,7 @@ function assert_corpus_files {
 # - FILES: $TMP/$1/grammars/train-(0|…|9).(vanda[.readable]|.cs) or $TMP/$1/grammars/train-$2.(vanda[.readable]|.cs)
 function assert_tfcv_rustomata_files {
     if (( $# == 1 )); then
-        for fold in {0..9}; do
+        for fold in `seq 0 $FOLDS`; do
             assert_tfcv_rustomata_files "$1" "$fold"
         done
     else
@@ -330,7 +330,7 @@ function assert_tfcv_rustomata_files {
 # OUT:
 # - FILES: $TMP/$1/grammars/discodop-(0|..|9)[-(dop|ctf)].prm
 function assert_tfcv_discodop_files {
-    for fold in {0..9}; do
+    for fold in {0..$FOLDS}; do
         if ! [ -f "$TMP/$1/grammars/discodop-$fold.prm" ]; then
             sed "s:{TRAIN}:$TMP/$1/splits/train-$fold.export:" templates/discodop.prm \
                 | sed "s:{TEST}:$TMP/$1/splits/test-$fold.export:" \
@@ -362,7 +362,7 @@ function assert_tfcv_gf_files {
         $RPARSE -doTrain -train "$TMP/$1/low-punctuation.export" -headFinder negra -trainSave "$TMP/$1/grammars/gf-all" &> /dev/null \
             || fail_and_cleanup "grammars/$1/gf-all"
     fi
-    for fold in {0..9}; do
+    for fold in {0..$FOLDS}; do
         if ! [ -d "$TMP/$1/grammars/gf-$fold" ]; then
             $RPARSE -doTrain -train "$TMP/$1/splits/train-$fold.export" -headFinder negra -trainSave "$TMP/$1/grammars/gf-$fold" &> /dev/null \
                 || fail_and_cleanup "grammars/$1/gf-$fold"
@@ -396,7 +396,7 @@ function assert_tfcv_gf_files {
 # OUT:
 # - FILES: $TMP/$1/grammars/rparse-train-(0|..|9)/
 function assert_tfcv_rparse_files {
-    for fold in {0..9}; do
+    for fold in {0..$FOLDS}; do
         if ! [ -f "$TMP/$1/grammars/rparse-train-$fold" ]; then
             $RPARSE -doTrain -train "$TMP/$1/splits/train-$fold.export" -headFinder negra -saveModel "$TMP/$1/grammars/rparse-train-$fold" &> /dev/null \
                 || fail_and_cleanup "$1/grammars/rparse-train-$fold"

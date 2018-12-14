@@ -4,6 +4,9 @@
 # maximum sentence length to consider in the test / evaluation sets
 MAXLENGTH=20
 
+# number of folds to use for evaluation
+FOLDS=9
+
 # paths
 ## temp folder – contains intermediate results and extracted artifacts
 TMP="/tmp/rustomata-cs-eval"
