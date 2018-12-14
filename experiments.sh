@@ -28,10 +28,12 @@ function _rparse_ {
 
     echo -e "len\ttime\tsuccess" >> "$TMP/$corpus/results/rparse-times.tsv"
     for fold in `seq 1 $FOLDS`; do
+	echo "Processing fold $fold/$FOLDS... "
         $RPARSE -doParse -test "$TMP/$corpus/splits/test-$fold.export" -testFormat export -readModel "$TMP/$corpus/grammars/rparse-train-$fold" -timeout "$RPARSE_TIMEOUT" \
              > >($PYTHON $SCRIPTS/fill_sentence_id.py "$TMP/$corpus/splits/test-$fold.sent" | $PYTHON $SCRIPTS/fill_noparses.py "$TMP/$corpus/splits/test-$fold.sent" >> "$TMP/$corpus/results/rparse-predictions.export")  \
             2> >($PYTHON $SCRIPTS/parse_rparse_output.py >> "$TMP/$corpus/results/rparse-times.tsv") \
             || fail_and_cleanup "$corpus/results/rparse-predictions.export" "$corpus/results/rparse-times.tsv"
+	echo "done."
     done
         
     $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/rparse-predictions.export" "$DISCODOP_EVAL" \
@@ -58,11 +60,13 @@ function _gf_ {
 
     echo -e "len\ttime\tsuccess" >> "$TMP/$corpus/results/gf-times.tsv"
     for fold in `seq 1 $FOLDS`; do
+	echo "Processing fold $fold/$FOLDS... "
         gf_with_timeout "$TMP/$corpus/grammars/gf-$fold/grammargfabstract.pgf" "$TMP/$corpus/splits/test-$fold-gf.sent" \
               | $PYTHON $SCRIPTS/parse_gf_output.py "$TMP/$corpus/splits/test-$fold.sent" \
               > >($PYTHON $SCRIPTS/gf-escapes-rev.py >> "$TMP/$corpus/results/gf-predictions.export") \
             2>> "$TMP/$corpus/results/gf-times.tsv" \
              || fail_and_cleanup "results/gf-predictions.export" "results/gf-times.tsv"
+	echo "done."
     done
 
     $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/gf-predictions.export" "$DISCODOP_EVAL" \
@@ -89,11 +93,14 @@ function _discolcfrs_ {
 
     echo -e "sentid\tlen\tstage\telapsedtime\tlogprob\tfrags\tnumitems\tgolditems\ttotalgolditems" > "$TMP/$corpus/results/discodop-times.tsv"
     for fold in `seq 1 $FOLDS`; do
-        $DISCO runexp "$TMP/$corpus/grammars/discodop-$fold.prm" \
+	echo "Processing fold $fold/$FOLDS... "
+        $DISCO runexp "$TMP/$corpus/grammars/discodop-$fold.prm" &> /dev/null \
             || fail_and_cleanup "grammars/discodop-$fold"
         
-        tail -n+2 "$TMP/$corpus/grammars/discodop-$fold/stats.tsv" >> "$TMP/$corpus/results/discodop-times.tsv"
+        $PYTHON $SCRIPTS/averages.py --group=sentid --mean=len --sum=elapsedtime < "$TMP/$corpus/grammars/discodop-$fold/stats.tsv" \
+          | tail -n+2 >> "$TMP/$corpus/results/discodop-times.tsv"
         cat "$TMP/$corpus/grammars/discodop-$fold/plcfrs.export" >> "$TMP/$corpus/results/discodop-predictions.export"
+	echo "done."
     done
         
     $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/discodop-predictions.export" "$DISCODOP_EVAL" \
@@ -120,12 +127,14 @@ function _discoctf_ {
 
     echo -e "sentid\tlen\telapsedtime" > "$TMP/$corpus/results/discodop-ctf-times.tsv"
     for fold in `seq 1 $FOLDS`; do
+	echo "Processing fold $fold/$FOLDS... "
         $DISCO runexp "$TMP/$corpus/grammars/discodop-$fold-ctf.prm" &> /dev/null \
             || fail_and_cleanup "grammars/discodop-$fold-ctf"
         
         $PYTHON $SCRIPTS/averages.py --group=sentid --mean=len --sum=elapsedtime < "$TMP/$corpus/grammars/discodop-$fold-ctf/stats.tsv" \
             | tail -n+2 >> "$TMP/$corpus/results/discodop-ctf-times.tsv"
         cat "$TMP/$corpus/grammars/discodop-$fold-ctf/plcfrs.export" >> "$TMP/$corpus/results/discodop-ctf-predictions.export"
+	echo "done."
     done
         
     $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/discodop-ctf-predictions.export" "$DISCODOP_EVAL" \
@@ -152,12 +161,14 @@ function _discodop_ {
 
     echo -e "sentid\tlen\telapsedtime" > "$TMP/$corpus/results/discodop-dop-times.tsv"
     for fold in `seq 1 $FOLDS`; do
+	echo "Processing fold $fold/$FOLDS... "
         $DISCO runexp "$TMP/$corpus/grammars/discodop-$fold-dop.prm" &> /dev/null \
             || fail_and_cleanup "grammars/discodop-$fold-dop"
         
         $PYTHON $SCRIPTS/averages.py --group=sentid --mean=len --sum=elapsedtime < "$TMP/$corpus/grammars/discodop-$fold-dop/stats.tsv" \
             | tail -n+2 >> "$TMP/$corpus/results/discodop-dop-times.tsv"
         cat "$TMP/$corpus/grammars/discodop-$fold-dop/dop.export" >> "$TMP/$corpus/results/discodop-dop-predictions.export"
+	echo "done."
     done
         
     $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/discodop-dop-predictions.export" "$DISCODOP_EVAL" \
@@ -184,10 +195,12 @@ function _rustomata_ {
 
     echo -e "grammarsize\tlen\tgrammarsize_after_filtering\ttime\tresult\tcandidates" >> "$TMP/$corpus/results/rustomata-times.tsv"
     for fold in `seq 1 $FOLDS`; do
+	echo "Processing fold $fold/$FOLDS... "
         $RUSTOMATA csparsing parse "$TMP/$corpus/grammars/train-$fold.cs" --beam=$RUSTOMATA_D_BEAM --candidates=$RUSTOMATA_D_CANDIDATES --with-pos --with-lines --debug < "$TMP/$corpus/splits/test-$fold.sent" \
             2> >(sed 's: :\t:g' >> "$TMP/$corpus/results/rustomata-times.tsv") \
              | sed 's:_[[:digit:]]::' >> "$TMP/$corpus/results/rustomata-predictions.export" \
             || fail_and_cleanup "results/rustomata-times.tsv" "results/rustomata-predictions.export"
+	echo "done."
     done
         
     $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/rustomata-predictions.export" "$DISCODOP_EVAL" \
