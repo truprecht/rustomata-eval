@@ -24,15 +24,20 @@ As for disco-dop, the paths of these binaries are set in a local configuration f
     ```bash
     bash experiments.sh rustomata ~/negra/negra-corpus.export
     ```
+* In the case of `discodop`, there are different parsing pipelines implemented. Each one is specified by passing either of `ctf`, `lcfrs` or `dop` additionally, e.g.
+    ```bash
+    bash experiments.sh discodop ~/negra/negra-corpus.export lcfrs
+    ```
 * The results are stored in the `$RESULTS` path that was set in `experiments.conf`. E.g. the median parse times for each sentence length of Rustomata using the negra corpus are saved to `$RESULTS/rustomata-negra-corpus.export-times.tsv`.
 
 ### Supported parsers
 
 Currently, support for the following parsers is implemented:
 * Rustomata's Chomsky-Schützenberger parsing implementation via `rustomata`
-* disco-dop's default coarse-to-fine parsing pipeline (pcfg → plcfrs → dop) via `discodop`
-* disco-dop's coarse-to-fine parsing pipeline without DOP (pcfg → plcfrs) via `discoctf`
-* disco-dop's lcfrs parser via `discolcfrs`
+* disco-dop via `discodop` and one of the following pipeline arguments
+    * `lcfrs` for the single lcfrs parser
+    * `ctf` for the coarse-to-fine parsing pipeline without DOP (pcfg → plcfrs)
+    * `dop` for the default coarse-to-fine parsing pipeline (pcfg → plcfrs → dop)
 * rparse via `rparse`
 * grammatical framework via `gf`
 

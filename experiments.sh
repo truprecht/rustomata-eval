@@ -28,12 +28,12 @@ function _rparse_ {
 
     echo -e "len\ttime\tsuccess" >> "$TMP/$corpus/results/rparse-times.tsv"
     for (( fold=1; fold<=$MAX_EVAL_FOLD; fold++ )); do
-    echo "Processing fold $fold/$MAX_EVAL_FOLD... "
+        echo "Processing fold $fold/$MAX_EVAL_FOLD... "
         $RPARSE -doParse -test "$TMP/$corpus/splits/test-$fold.export" -testFormat export -readModel "$TMP/$corpus/grammars/rparse-train-$fold" -timeout "$RPARSE_TIMEOUT" \
              > >($PYTHON $SCRIPTS/fill_sentence_id.py "$TMP/$corpus/splits/test-$fold.sent" | $PYTHON $SCRIPTS/fill_noparses.py "$TMP/$corpus/splits/test-$fold.sent" >> "$TMP/$corpus/results/rparse-predictions.export")  \
             2> >($PYTHON $SCRIPTS/parse_rparse_output.py >> "$TMP/$corpus/results/rparse-times.tsv") \
             || fail_and_cleanup "$corpus/results/rparse-predictions.export" "$corpus/results/rparse-times.tsv"
-    echo "done."
+        echo "done."
     done
 
     $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/rparse-predictions.export" "$DISCODOP_EVAL" \
@@ -60,13 +60,13 @@ function _gf_ {
 
     echo -e "len\ttime\tsuccess" >> "$TMP/$corpus/results/gf-times.tsv"
     for (( fold=1; fold<=$MAX_EVAL_FOLD; fold++ )); do
-    echo "Processing fold $fold/$MAX_EVAL_FOLD... "
+        echo "Processing fold $fold/$MAX_EVAL_FOLD... "
         gf_with_timeout "$TMP/$corpus/grammars/gf-$fold/grammargfabstract.pgf" "$TMP/$corpus/splits/test-$fold-gf.sent" \
               | $PYTHON $SCRIPTS/parse_gf_output.py "$TMP/$corpus/splits/test-$fold.sent" \
               > >($PYTHON $SCRIPTS/gf-escapes-rev.py >> "$TMP/$corpus/results/gf-predictions.export") \
             2>> "$TMP/$corpus/results/gf-times.tsv" \
              || fail_and_cleanup "results/gf-predictions.export" "results/gf-times.tsv"
-    echo "done."
+        echo "done."
     done
 
     $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/gf-predictions.export" "$DISCODOP_EVAL" \
@@ -97,14 +97,14 @@ function _discodop_ {
 
     echo -e "sentid\tlen\telapsedtime" > "$TMP/$corpus/results/discodop-$2-times.tsv"
     for (( fold=1; fold<=$MAX_EVAL_FOLD; fold++ )); do
-    echo "Processing fold $fold/$MAX_EVAL_FOLD... "
+        echo "Processing fold $fold/$MAX_EVAL_FOLD... "
         $DISCO runexp "$TMP/$corpus/grammars/discodop-$2-$fold.prm" &> /dev/null \
             || fail_and_cleanup "grammars/discodop-$2-$fold"
 
         $PYTHON $SCRIPTS/averages.py --group=sentid --mean=len --sum=elapsedtime < "$TMP/$corpus/grammars/discodop-$2-$fold/stats.tsv" \
             | tail -n+2 >> "$TMP/$corpus/results/discodop-$2-times.tsv"
         cat "$TMP/$corpus/grammars/discodop-$2-$fold/dop.export" >> "$TMP/$corpus/results/discodop-$2-predictions.export"
-    echo "done."
+        echo "done."
     done
 
     $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/discodop-$2-predictions.export" "$DISCODOP_EVAL" \
@@ -131,12 +131,12 @@ function _rustomata_ {
 
     echo -e "grammarsize\tlen\tgrammarsize_after_filtering\ttime\tresult\tcandidates" >> "$TMP/$corpus/results/rustomata-times.tsv"
     for (( fold=1; fold<=$MAX_EVAL_FOLD; fold++ )); do
-    echo "Processing fold $fold/$MAX_EVAL_FOLD... "
+        echo "Processing fold $fold/$MAX_EVAL_FOLD... "
         $RUSTOMATA csparsing parse "$TMP/$corpus/grammars/train-$fold.cs" --beam=$RUSTOMATA_D_BEAM --candidates=$RUSTOMATA_D_CANDIDATES --with-pos --with-lines --debug < "$TMP/$corpus/splits/test-$fold.sent" \
             2> >(sed 's: :\t:g' >> "$TMP/$corpus/results/rustomata-times.tsv") \
              | sed 's:_[[:digit:]]::' >> "$TMP/$corpus/results/rustomata-predictions.export" \
             || fail_and_cleanup "results/rustomata-times.tsv" "results/rustomata-predictions.export"
-    echo "done."
+        cho "done."
     done
 
     $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/rustomata-predictions.export" "$DISCODOP_EVAL" \
