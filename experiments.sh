@@ -80,103 +80,40 @@ function _gf_ {
 }
 
 # IN:
-# - PARAMETERS: $1 – corpus file
-# - FILES: $1, templates/discodop.prm
+# - PARAMETERS: $1 – corpus file, $2 – pipeline name (ctf|lcfrs|dop)
+# - FILES: $1, templates/discodop-$2.prm
 # OUT:
-# - FILES: $TMP/<basename of $1>/results/discodop-(times.tsv|predictions.export),
-#          $RESULTS/discodop-<basename of $1>-(scores|times-(mean|median)).tsv
-function _discolcfrs_ {
-    corpus=`basename $1`
-    assert_folder_structure "$corpus"
-    assert_corpus_files "$1" "$corpus"
-    assert_tfcv_discodop_files "$corpus"
-
-    echo -e "sentid\tlen\tstage\telapsedtime\tlogprob\tfrags\tnumitems\tgolditems\ttotalgolditems" > "$TMP/$corpus/results/discodop-times.tsv"
-    for (( fold=1; fold<=$MAX_EVAL_FOLD; fold++ )); do
-    echo "Processing fold $fold/$MAX_EVAL_FOLD... "
-        $DISCO runexp "$TMP/$corpus/grammars/discodop-$fold.prm" &> /dev/null \
-            || fail_and_cleanup "grammars/discodop-$fold"
-
-        tail -n+2 "$TMP/$corpus/grammars/discodop-$fold/stats.tsv" >> "$TMP/$corpus/results/discodop-times.tsv"
-        cat "$TMP/$corpus/grammars/discodop-$fold/plcfrs.export" >> "$TMP/$corpus/results/discodop-predictions.export"
-    echo "done."
-    done
-
-    $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/discodop-predictions.export" "$DISCODOP_EVAL" \
-         > "$RESULTS/discodop-tfcv-scores.txt" \
-        || fail_and_cleanup
-
-    $PYTHON $SCRIPTS/averages.py --group=len --mean=elapsedtime < "$TMP/$corpus/results/discodop-times.tsv" > "$RESULTS/discodop-$corpus-times-mean.tsv" \
-        || fail_and_cleanup
-    $PYTHON $SCRIPTS/averages.py --group=len --median=elapsedtime  < "$TMP/$corpus/results/discodop-times.tsv" > "$RESULTS/discodop-$corpus-times-median.tsv" \
-        || fail_and_cleanup
-}
-
-# IN:
-# - PARAMETERS: $1 – corpus file
-# - FILES: $1, templates/discodop-ctf.prm
-# OUT:
-# - FILES: $TMP/<basename of $1>/results/discodop-ctf-(times.tsv|predictions.export),
-#          $RESULTS/discodop-ctf-<basename of $1>-(scores|times-(mean|median)).tsv
-function _discoctf_ {
-    corpus=`basename $1`
-    assert_folder_structure "$corpus"
-    assert_corpus_files "$1" "$corpus"
-    assert_tfcv_discodop_files "$corpus"
-
-    echo -e "sentid\tlen\telapsedtime" > "$TMP/$corpus/results/discodop-ctf-times.tsv"
-    for (( fold=1; fold<=$MAX_EVAL_FOLD; fold++ )); do
-    echo "Processing fold $fold/$MAX_EVAL_FOLD... "
-        $DISCO runexp "$TMP/$corpus/grammars/discodop-$fold-ctf.prm" &> /dev/null \
-            || fail_and_cleanup "grammars/discodop-$fold-ctf"
-
-        $PYTHON $SCRIPTS/averages.py --group=sentid --mean=len --sum=elapsedtime < "$TMP/$corpus/grammars/discodop-$fold-ctf/stats.tsv" \
-            | tail -n+2 >> "$TMP/$corpus/results/discodop-ctf-times.tsv"
-        cat "$TMP/$corpus/grammars/discodop-$fold-ctf/plcfrs.export" >> "$TMP/$corpus/results/discodop-ctf-predictions.export"
-    echo "done."
-    done
-
-    $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/discodop-ctf-predictions.export" "$DISCODOP_EVAL" \
-         > "$RESULTS/discodop-ctf-tfcv-scores.txt" \
-        || fail_and_cleanup
-
-    $PYTHON $SCRIPTS/averages.py --group=len --mean=elapsedtime < "$TMP/$corpus/results/discodop-ctf-times.tsv" > "$RESULTS/discodop-ctf-$corpus-times-mean.tsv" \
-        || fail_and_cleanup
-    $PYTHON $SCRIPTS/averages.py --group=len --median=elapsedtime < "$TMP/$corpus/results/discodop-ctf-times.tsv" > "$RESULTS/discodop-ctf-$corpus-times-median.tsv" \
-        || fail_and_cleanup
-}
-
-# IN:
-# - PARAMETERS: $1 – corpus file
-# - FILES: $1, templates/discodop-dop.prm
-# OUT:
-# - FILES: $TMP/<basename of $1>/results/discodop-dop-(times.tsv|predictions.export),
-#          $RESULTS/discodop-dop-<basename of $1>-(scores|times-(mean|median)).tsv
+# - FILES: $TMP/<basename of $1>/results/discodop-$2-(times.tsv|predictions.export),
+#          $RESULTS/discodop-$2-<basename of $1>-(scores|times-(mean|median)).tsv
 function _discodop_ {
+    if ! (( $# == 2 )); then
+        echo "Missing pipeline argument"
+        fail_and_cleanup
+    fi
     corpus=`basename $1`
     assert_folder_structure "$corpus"
     assert_corpus_files "$1" "$corpus"
-    assert_tfcv_discodop_files "$corpus"
+    assert_tfcv_discodop_files "$corpus" "$2"
 
-    echo -e "sentid\tlen\telapsedtime" > "$TMP/$corpus/results/discodop-dop-times.tsv"
+    echo -e "sentid\tlen\telapsedtime" > "$TMP/$corpus/results/discodop-$2-times.tsv"
     for (( fold=1; fold<=$MAX_EVAL_FOLD; fold++ )); do
     echo "Processing fold $fold/$MAX_EVAL_FOLD... "
-        $DISCO runexp "$TMP/$corpus/grammars/discodop-$fold-dop.prm" &> /dev/null \
-            || fail_and_cleanup "grammars/discodop-$fold-dop"
+        $DISCO runexp "$TMP/$corpus/grammars/discodop-$2-$fold.prm" &> /dev/null \
+            || fail_and_cleanup "grammars/discodop-$2-$fold"
 
-        $PYTHON $SCRIPTS/averages.py --group=sentid --mean=len --sum=elapsedtime < "$TMP/$corpus/grammars/discodop-$fold-dop/stats.tsv" \
-            | tail -n+2 >> "$TMP/$corpus/results/discodop-dop-times.tsv"
-        cat "$TMP/$corpus/grammars/discodop-$fold-dop/dop.export" >> "$TMP/$corpus/results/discodop-dop-predictions.export"
+        $PYTHON $SCRIPTS/averages.py --group=sentid --mean=len --sum=elapsedtime < "$TMP/$corpus/grammars/discodop-$2-$fold/stats.tsv" \
+            | tail -n+2 >> "$TMP/$corpus/results/discodop-$2-times.tsv"
+        cat "$TMP/$corpus/grammars/discodop-$2-$fold/dop.export" >> "$TMP/$corpus/results/discodop-$2-predictions.export"
     echo "done."
     done
 
-    $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/discodop-dop-predictions.export" "$DISCODOP_EVAL" \
-         > "$RESULTS/discodop-dop-tfcv-scores.txt" \
+    $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/discodop-$2-predictions.export" "$DISCODOP_EVAL" \
+         > "$RESULTS/discodop-$2-tfcv-scores.txt" \
         || fail_and_cleanup
 
-    $PYTHON $SCRIPTS/averages.py --group=len --mean=elapsedtime < "$TMP/$corpus/results/discodop-dop-times.tsv" > "$RESULTS/discodop-dop-$corpus-times-mean.tsv" \
+    $PYTHON $SCRIPTS/averages.py --group=len --mean=elapsedtime < "$TMP/$corpus/results/discodop-$2-times.tsv" > "$RESULTS/discodop-$2-$corpus-times-mean.tsv" \
         || fail_and_cleanup
-    $PYTHON $SCRIPTS/averages.py --group=len --median=elapsedtime < "$TMP/$corpus/results/discodop-dop-times.tsv" > "$RESULTS/discodop-dop-$corpus-times-median.tsv" \
+    $PYTHON $SCRIPTS/averages.py --group=len --median=elapsedtime < "$TMP/$corpus/results/discodop-$2-times.tsv" > "$RESULTS/discodop-$2-$corpus-times-median.tsv" \
         || fail_and_cleanup
 }
 
@@ -337,29 +274,17 @@ function assert_tfcv_rustomata_files {
 }
 
 # IN:
-# - PARAMETERS: $1 – corpus name
-# - FILES: templates/discodop[-(dop|ctf)].prm
+# - PARAMETERS: $1 – corpus name, $2 – pipeline name (lcfrs|dop|ctf)
+# - FILES: templates/discodop-(dop|ctf|lcfrs).prm
 # OUT:
-# - FILES: $TMP/$1/grammars/discodop-(0|..|9)[-(dop|ctf)].prm
+# - FILES: $TMP/$1/grammars/discodop-(dop|ctf|lcfrs)-(0|..|9).prm
 function assert_tfcv_discodop_files {
     for (( fold=1; fold<=$MAX_EVAL_FOLD; fold++ )); do
-        if ! [ -f "$TMP/$1/grammars/discodop-$fold.prm" ]; then
-            sed "s:{TRAIN}:$TMP/$1/splits/train-$fold.export:" templates/discodop.prm \
+        if ! [ -f "$TMP/$1/grammars/discodop-$2-$fold.prm" ]; then
+            sed "s:{TRAIN}:$TMP/$1/splits/train-$fold.export:" "templates/discodop-$2.prm" \
                 | sed "s:{TEST}:$TMP/$1/splits/test-$fold.export:" \
                 | sed "s:{MAXLENGTH}:$MAXLENGTH:" \
-                | sed "s:{EVALFILE}:$DISCODOP_EVAL:" > "$TMP/$1/grammars/discodop-$fold.prm"
-        fi
-        if ! [ -f "$TMP/$1/grammars/discodop-$fold-dop.prm" ]; then
-            sed "s:{TRAIN}:$TMP/$1/splits/train-$fold.export:" templates/discodop-dop.prm \
-                | sed "s:{TEST}:$TMP/$1/splits/test-$fold.export:" \
-                | sed "s:{MAXLENGTH}:$MAXLENGTH:" \
-                | sed "s:{EVALFILE}:$DISCODOP_EVAL:" > "$TMP/$1/grammars/discodop-$fold-dop.prm"
-        fi
-        if ! [ -f "$TMP/$1/grammars/discodop-$fold-ctf.prm" ]; then
-            sed "s:{TRAIN}:$TMP/$1/splits/train-$fold.export:" templates/discodop-ctf.prm \
-                | sed "s:{TEST}:$TMP/$1/splits/test-$fold.export:" \
-                | sed "s:{MAXLENGTH}:$MAXLENGTH:" \
-                | sed "s:{EVALFILE}:$DISCODOP_EVAL:" > "$TMP/$1/grammars/discodop-$fold-ctf.prm"
+                | sed "s:{EVALFILE}:$DISCODOP_EVAL:" > "$TMP/$1/grammars/discodop-$2-$fold.prm"
         fi
     done
 }
@@ -428,21 +353,25 @@ function fail_and_cleanup {
     exit 1
 }
 
-
-# main script that runs the procedures for given parameters
-# clean the results of --clean was given as third parameter,
-# clean whole $TMP if --clean-all was given
-if (( $# > 2 )) && [[ "$3" =~ ^--clean ]]; then
-    corpus=`basename $2`
+function _clean_ {
+    corpus=`basename $1`
     if [ -d "$RESULTS" ]; then $TRASH "$RESULTS"; fi
     if [ -d "$TMP/$corpus/results" ]; then $TRASH "$TMP/$corpus/results"; fi
-    if [[ "$3" =~ ^--clean-all$ ]]; then
-        if [ -f "$TMP/$corpus/low-punctuation.export" ]; then $TRASH "$TMP/$corpus/low-punctuation.export"; fi
-        if [ -d "$TMP/$corpus/grammars" ]; then $TRASH "$TMP/$corpus/grammars"; fi
-        if [ -d "$TMP/$corpus/splits" ]; then $TRASH "$TMP/$corpus/splits"; fi
-    fi
-fi
+}
 
-if (( $# < 2)) || ! _$1_ $2; then
-    echo "use $0 (rustomata|gf|rparse|discolcfrs|discodop|rustomata_dev) <corpus> [--clean[-all]]";
+function _clean-all_ {
+    _clean_ $1
+    corpus=`basename $1`
+    if [ -f "$TMP/$corpus/low-punctuation.export" ]; then $TRASH "$TMP/$corpus/low-punctuation.export"; fi
+    if [ -d "$TMP/$corpus/grammars" ]; then $TRASH "$TMP/$corpus/grammars"; fi
+    if [ -d "$TMP/$corpus/splits" ]; then $TRASH "$TMP/$corpus/splits"; fi
+}
+
+if ! (( $# > 1 )) \
+|| ! [[ "$1" =~ ^(rustomata|gf|rparse|discodop|rustomata_dev|clean(-all)?)$ ]] \
+|| ! [ -f "$2" ] \
+|| ( (( $# > 2 )) && ! [[ "$3" =~ ^(dop|ctf|lcfrs)$ ]] ); then
+    echo "use $0 (rustomata|gf|rparse|discodop|rustomata_dev|clean[-all]) <corpus> [<discodop pipeline>]";
+else
+    if (( $# > 2 )); then _$1_ $2 $3; else _$1_ $2; fi
 fi
