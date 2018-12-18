@@ -4,8 +4,11 @@
 # maximum sentence length to consider in the test / evaluation sets
 MAXLENGTH=20
 
-# number of folds to use for evaluation
-FOLDS=9
+# number tfcv's iterations to use for evaluation starting with the second,
+# e.g. MAX_EVAL_FOLD=1 only uses the second iteration (10% of all data)
+# for evaluation, MAX_EVAL_FOLD=9 uses all iterations from the second to
+# tenth iteration of tfcv
+MAX_EVAL_FOLD=9
 
 # paths
 ## temp folder – contains intermediate results and extracted artifacts

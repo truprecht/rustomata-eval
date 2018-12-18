@@ -10,9 +10,9 @@ else
 fi
 
 # this section contains the top-level experiment functions for each parser,
-# they will create tsv files for the parse time of each sentence in 
+# they will create tsv files for the parse time of each sentence in
 # <RESULTS>/<parser>-<corpus>-time-(mean|median).tsv and discodop's output for the accuracy in
-# <RESULTS>/<parser>-<corpus>-scores.txt 
+# <RESULTS>/<parser>-<corpus>-scores.txt
 
 # IN:
 # - PARAMETERS: $1 – corpus file
@@ -27,19 +27,19 @@ function _rparse_ {
     assert_tfcv_rparse_files "$corpus"
 
     echo -e "len\ttime\tsuccess" >> "$TMP/$corpus/results/rparse-times.tsv"
-    for fold in `seq 1 $FOLDS`; do
-	echo "Processing fold $fold/$FOLDS... "
+    for (( fold=1; fold<=$MAX_EVAL_FOLD; fold++ )); do
+    echo "Processing fold $fold/$MAX_EVAL_FOLD... "
         $RPARSE -doParse -test "$TMP/$corpus/splits/test-$fold.export" -testFormat export -readModel "$TMP/$corpus/grammars/rparse-train-$fold" -timeout "$RPARSE_TIMEOUT" \
              > >($PYTHON $SCRIPTS/fill_sentence_id.py "$TMP/$corpus/splits/test-$fold.sent" | $PYTHON $SCRIPTS/fill_noparses.py "$TMP/$corpus/splits/test-$fold.sent" >> "$TMP/$corpus/results/rparse-predictions.export")  \
             2> >($PYTHON $SCRIPTS/parse_rparse_output.py >> "$TMP/$corpus/results/rparse-times.tsv") \
             || fail_and_cleanup "$corpus/results/rparse-predictions.export" "$corpus/results/rparse-times.tsv"
-	echo "done."
+    echo "done."
     done
-        
+
     $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/rparse-predictions.export" "$DISCODOP_EVAL" \
          > "$RESULTS/rparse-$corpus-scores.txt" \
         || fail_and_cleanup
-    
+
     $PYTHON $SCRIPTS/averages.py --group=len --mean=time < "$TMP/$corpus/results/rparse-times.tsv" > "$RESULTS/rparse-$corpus-times-mean.tsv" \
         || fail_and_cleanup
     $PYTHON $SCRIPTS/averages.py --group=len --median=time < "$TMP/$corpus/results/rparse-times.tsv" > "$RESULTS/rparse-$corpus-times-median.tsv" \
@@ -59,20 +59,20 @@ function _gf_ {
     assert_tfcv_gf_files "$corpus"
 
     echo -e "len\ttime\tsuccess" >> "$TMP/$corpus/results/gf-times.tsv"
-    for fold in `seq 1 $FOLDS`; do
-	echo "Processing fold $fold/$FOLDS... "
+    for (( fold=1; fold<=$MAX_EVAL_FOLD; fold++ )); do
+    echo "Processing fold $fold/$MAX_EVAL_FOLD... "
         gf_with_timeout "$TMP/$corpus/grammars/gf-$fold/grammargfabstract.pgf" "$TMP/$corpus/splits/test-$fold-gf.sent" \
               | $PYTHON $SCRIPTS/parse_gf_output.py "$TMP/$corpus/splits/test-$fold.sent" \
               > >($PYTHON $SCRIPTS/gf-escapes-rev.py >> "$TMP/$corpus/results/gf-predictions.export") \
             2>> "$TMP/$corpus/results/gf-times.tsv" \
              || fail_and_cleanup "results/gf-predictions.export" "results/gf-times.tsv"
-	echo "done."
+    echo "done."
     done
 
     $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/gf-predictions.export" "$DISCODOP_EVAL" \
          > "$RESULTS/gf-$corpus-scores.txt" \
         || fail_and_cleanup
-    
+
     $PYTHON $SCRIPTS/averages.py --group=len --mean=time < "$TMP/$corpus/results/gf-times.tsv" > "$RESULTS/gf-$corpus-times-mean.tsv" \
         || fail_and_cleanup
     $PYTHON $SCRIPTS/averages.py --group=len --median=time < "$TMP/$corpus/results/gf-times.tsv" > "$RESULTS/gf-$corpus-times-median.tsv" \
@@ -92,21 +92,20 @@ function _discolcfrs_ {
     assert_tfcv_discodop_files "$corpus"
 
     echo -e "sentid\tlen\tstage\telapsedtime\tlogprob\tfrags\tnumitems\tgolditems\ttotalgolditems" > "$TMP/$corpus/results/discodop-times.tsv"
-    for fold in `seq 1 $FOLDS`; do
-	echo "Processing fold $fold/$FOLDS... "
+    for (( fold=1; fold<=$MAX_EVAL_FOLD; fold++ )); do
+    echo "Processing fold $fold/$MAX_EVAL_FOLD... "
         $DISCO runexp "$TMP/$corpus/grammars/discodop-$fold.prm" &> /dev/null \
             || fail_and_cleanup "grammars/discodop-$fold"
-        
-        $PYTHON $SCRIPTS/averages.py --group=sentid --mean=len --sum=elapsedtime < "$TMP/$corpus/grammars/discodop-$fold/stats.tsv" \
-          | tail -n+2 >> "$TMP/$corpus/results/discodop-times.tsv"
+
+        tail -n+2 "$TMP/$corpus/grammars/discodop-$fold/stats.tsv" >> "$TMP/$corpus/results/discodop-times.tsv"
         cat "$TMP/$corpus/grammars/discodop-$fold/plcfrs.export" >> "$TMP/$corpus/results/discodop-predictions.export"
-	echo "done."
+    echo "done."
     done
-        
+
     $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/discodop-predictions.export" "$DISCODOP_EVAL" \
          > "$RESULTS/discodop-tfcv-scores.txt" \
         || fail_and_cleanup
-    
+
     $PYTHON $SCRIPTS/averages.py --group=len --mean=elapsedtime < "$TMP/$corpus/results/discodop-times.tsv" > "$RESULTS/discodop-$corpus-times-mean.tsv" \
         || fail_and_cleanup
     $PYTHON $SCRIPTS/averages.py --group=len --median=elapsedtime  < "$TMP/$corpus/results/discodop-times.tsv" > "$RESULTS/discodop-$corpus-times-median.tsv" \
@@ -126,21 +125,21 @@ function _discoctf_ {
     assert_tfcv_discodop_files "$corpus"
 
     echo -e "sentid\tlen\telapsedtime" > "$TMP/$corpus/results/discodop-ctf-times.tsv"
-    for fold in `seq 1 $FOLDS`; do
-	echo "Processing fold $fold/$FOLDS... "
+    for (( fold=1; fold<=$MAX_EVAL_FOLD; fold++ )); do
+    echo "Processing fold $fold/$MAX_EVAL_FOLD... "
         $DISCO runexp "$TMP/$corpus/grammars/discodop-$fold-ctf.prm" &> /dev/null \
             || fail_and_cleanup "grammars/discodop-$fold-ctf"
-        
+
         $PYTHON $SCRIPTS/averages.py --group=sentid --mean=len --sum=elapsedtime < "$TMP/$corpus/grammars/discodop-$fold-ctf/stats.tsv" \
             | tail -n+2 >> "$TMP/$corpus/results/discodop-ctf-times.tsv"
         cat "$TMP/$corpus/grammars/discodop-$fold-ctf/plcfrs.export" >> "$TMP/$corpus/results/discodop-ctf-predictions.export"
-	echo "done."
+    echo "done."
     done
-        
+
     $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/discodop-ctf-predictions.export" "$DISCODOP_EVAL" \
          > "$RESULTS/discodop-ctf-tfcv-scores.txt" \
         || fail_and_cleanup
-    
+
     $PYTHON $SCRIPTS/averages.py --group=len --mean=elapsedtime < "$TMP/$corpus/results/discodop-ctf-times.tsv" > "$RESULTS/discodop-ctf-$corpus-times-mean.tsv" \
         || fail_and_cleanup
     $PYTHON $SCRIPTS/averages.py --group=len --median=elapsedtime < "$TMP/$corpus/results/discodop-ctf-times.tsv" > "$RESULTS/discodop-ctf-$corpus-times-median.tsv" \
@@ -160,21 +159,21 @@ function _discodop_ {
     assert_tfcv_discodop_files "$corpus"
 
     echo -e "sentid\tlen\telapsedtime" > "$TMP/$corpus/results/discodop-dop-times.tsv"
-    for fold in `seq 1 $FOLDS`; do
-	echo "Processing fold $fold/$FOLDS... "
+    for (( fold=1; fold<=$MAX_EVAL_FOLD; fold++ )); do
+    echo "Processing fold $fold/$MAX_EVAL_FOLD... "
         $DISCO runexp "$TMP/$corpus/grammars/discodop-$fold-dop.prm" &> /dev/null \
             || fail_and_cleanup "grammars/discodop-$fold-dop"
-        
+
         $PYTHON $SCRIPTS/averages.py --group=sentid --mean=len --sum=elapsedtime < "$TMP/$corpus/grammars/discodop-$fold-dop/stats.tsv" \
             | tail -n+2 >> "$TMP/$corpus/results/discodop-dop-times.tsv"
         cat "$TMP/$corpus/grammars/discodop-$fold-dop/dop.export" >> "$TMP/$corpus/results/discodop-dop-predictions.export"
-	echo "done."
+    echo "done."
     done
-        
+
     $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/discodop-dop-predictions.export" "$DISCODOP_EVAL" \
          > "$RESULTS/discodop-dop-tfcv-scores.txt" \
         || fail_and_cleanup
-    
+
     $PYTHON $SCRIPTS/averages.py --group=len --mean=elapsedtime < "$TMP/$corpus/results/discodop-dop-times.tsv" > "$RESULTS/discodop-dop-$corpus-times-mean.tsv" \
         || fail_and_cleanup
     $PYTHON $SCRIPTS/averages.py --group=len --median=elapsedtime < "$TMP/$corpus/results/discodop-dop-times.tsv" > "$RESULTS/discodop-dop-$corpus-times-median.tsv" \
@@ -194,19 +193,19 @@ function _rustomata_ {
     assert_tfcv_rustomata_files "$corpus"
 
     echo -e "grammarsize\tlen\tgrammarsize_after_filtering\ttime\tresult\tcandidates" >> "$TMP/$corpus/results/rustomata-times.tsv"
-    for fold in `seq 1 $FOLDS`; do
-	echo "Processing fold $fold/$FOLDS... "
+    for (( fold=1; fold<=$MAX_EVAL_FOLD; fold++ )); do
+    echo "Processing fold $fold/$MAX_EVAL_FOLD... "
         $RUSTOMATA csparsing parse "$TMP/$corpus/grammars/train-$fold.cs" --beam=$RUSTOMATA_D_BEAM --candidates=$RUSTOMATA_D_CANDIDATES --with-pos --with-lines --debug < "$TMP/$corpus/splits/test-$fold.sent" \
             2> >(sed 's: :\t:g' >> "$TMP/$corpus/results/rustomata-times.tsv") \
              | sed 's:_[[:digit:]]::' >> "$TMP/$corpus/results/rustomata-predictions.export" \
             || fail_and_cleanup "results/rustomata-times.tsv" "results/rustomata-predictions.export"
-	echo "done."
+    echo "done."
     done
-        
+
     $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/rustomata-predictions.export" "$DISCODOP_EVAL" \
         >> $RESULTS/rustomata-scores.txt \
         || fail_and_cleanup
-    
+
     $PYTHON $SCRIPTS/averages.py --group=len --mean=time < "$TMP/$corpus/results/rustomata-times.tsv" >> "$RESULTS/rustomata-$corpus-times-mean.tsv" \
         || fail_and_cleanup
     $PYTHON $SCRIPTS/averages.py --group=len --median=time < "$TMP/$corpus/results/rustomata-times.tsv" >> "$RESULTS/rustomata-$corpus-times-median.tsv" \
@@ -229,8 +228,8 @@ function _rustomata_dev_ {
     assert_corpus_files "$1" "$corpus"
     assert_tfcv_rustomata_files "$corpus" 0
 
-    echo -e "beam\tcandidates\tlen\ttime" > $RESULTS/rustomata-ofcv-$corpus-times-mean.tsv 
-    echo -e "beam\tcandidates\tlen\ttime" > $RESULTS/rustomata-ofcv-$corpus-times-median.tsv 
+    echo -e "beam\tcandidates\tlen\ttime" > $RESULTS/rustomata-ofcv-$corpus-times-mean.tsv
+    echo -e "beam\tcandidates\tlen\ttime" > $RESULTS/rustomata-ofcv-$corpus-times-median.tsv
     for beam in ${RUSTOMATA_BEAMS[*]}; do
         for cans in ${RUSTOMATA_CANDIDATES[*]}; do
             echo -e "grammarsize\tlen\tgrammarsize_after_filtering\ttime\tresult\tcandidates" > "$TMP/$corpus/results/rustomata-ofcv-$beam-$cans-times.tsv"
@@ -238,14 +237,14 @@ function _rustomata_dev_ {
                 2> >(sed 's: :\t:g' >> "$TMP/$corpus/results/rustomata-ofcv-$beam-$cans-times.tsv") \
                  | sed 's:_[[:digit:]]::' > "$TMP/$corpus/results/rustomata-ofcv-$beam-$cans-predictions.export" \
                 || fail_and_cleanup "results/rustomata-ofcv-$beam-$cans-times.csv" "results/rustomata-ofcv-$beam-$cans-predictions.export"
-            
+
             echo -ne "$beam\t$cans\t" >> $RESULTS/rustomata-ofcv-$corpus-scores.tsv
             $DISCO eval $TMP/$corpus/splits/test-0.export $TMP/$corpus/results/rustomata-ofcv-$beam-$cans-predictions.export "$DISCODOP_EVAL" \
                  | grep -oP "labeled (precision|recall|f-measure):\s+\K\d+.\d+" \
                  | awk -vRS="\n" -vORS="\t" '1' >> $RESULTS/rustomata-ofcv-$corpus-scores.tsv \
                 || fail_and_cleanup
             echo "" >> $RESULTS/rustomata-ofcv-$corpus-scores.tsv
-            
+
             $PYTHON $SCRIPTS/averages.py --group=len --mean=time < $TMP/$corpus/results/rustomata-ofcv-$beam-$cans-times.tsv \
                  | tail -n+2 | head -n-2 \
                  | sed "s:^:$beam\t$cans\t:" >> $RESULTS/rustomata-ofcv-$corpus-times-mean.tsv \
@@ -312,7 +311,7 @@ function assert_corpus_files {
     fi
     if ! [ -f "$TMP/$2/splits/test-1-9.export" ]; then
         echo "#FORMAT 4" > "$TMP/$2/splits/test-1-9.export"
-        for fold in `seq 1 $FOLDS`; do
+        for (( fold=1; fold<=$MAX_EVAL_FOLD; fold++ )); do
             tail -n+2 "$TMP/$2/splits/test-$fold.export" >> "$TMP/$2/splits/test-1-9.export"
             echo "" >> "$TMP/$2/splits/test-1-9.export"
         done
@@ -326,7 +325,7 @@ function assert_corpus_files {
 # - FILES: $TMP/$1/grammars/train-(0|…|9).(vanda[.readable]|.cs) or $TMP/$1/grammars/train-$2.(vanda[.readable]|.cs)
 function assert_tfcv_rustomata_files {
     if (( $# == 1 )); then
-        for fold in `seq 0 $FOLDS`; do
+        for (( fold=0; fold<=$MAX_EVAL_FOLD; fold++ )); do
             assert_tfcv_rustomata_files "$1" "$fold"
         done
     else
@@ -343,7 +342,7 @@ function assert_tfcv_rustomata_files {
 # OUT:
 # - FILES: $TMP/$1/grammars/discodop-(0|..|9)[-(dop|ctf)].prm
 function assert_tfcv_discodop_files {
-    for fold in {0..$FOLDS}; do
+    for (( fold=1; fold<=$MAX_EVAL_FOLD; fold++ )); do
         if ! [ -f "$TMP/$1/grammars/discodop-$fold.prm" ]; then
             sed "s:{TRAIN}:$TMP/$1/splits/train-$fold.export:" templates/discodop.prm \
                 | sed "s:{TEST}:$TMP/$1/splits/test-$fold.export:" \
@@ -375,11 +374,11 @@ function assert_tfcv_gf_files {
         $RPARSE -doTrain -train "$TMP/$1/low-punctuation.export" -headFinder negra -trainSave "$TMP/$1/grammars/gf-all" &> /dev/null \
             || fail_and_cleanup "grammars/$1/gf-all"
     fi
-    for fold in {0..$FOLDS}; do
+    for (( fold=1; fold<=$MAX_EVAL_FOLD; fold++ )); do
         if ! [ -d "$TMP/$1/grammars/gf-$fold" ]; then
             $RPARSE -doTrain -train "$TMP/$1/splits/train-$fold.export" -headFinder negra -trainSave "$TMP/$1/grammars/gf-$fold" &> /dev/null \
                 || fail_and_cleanup "grammars/$1/gf-$fold"
-            
+
             # copy lexer from complete corpus, such that all terminals are available
             cp "$TMP/$1/grammars/gf-all/grammargf.lex" "$TMP/$1/grammars/gf-$fold/grammargf.lex"
             cp "$TMP/$1/grammars/gf-all/grammargflexconcrete.gf" "$TMP/$1/grammars/gf-$fold/grammargflexconcrete.gf"
@@ -388,7 +387,7 @@ function assert_tfcv_gf_files {
             grep -vP "^fun\d+" "$TMP/$1/grammars/gf-all/grammargf.probs" > "$TMP/$1/grammars/gf-$fold/grammargf.probs1"
             grep -P "^fun\d+" "$TMP/$1/grammars/gf-$fold/grammargf.probs" >> "$TMP/$1/grammars/gf-$fold/grammargf.probs1"
             mv "$TMP/$1/grammars/gf-$fold/grammargf.probs1" "$TMP/$1/grammars/gf-$fold/grammargf.probs"
-            
+
             $GF --probs="$TMP/$1/grammars/gf-$fold/grammargf.probs" --make -D "$TMP/$1/grammars/gf-$fold/" "$TMP/$1/grammars/gf-$fold/grammargfconcrete.gf" &> /dev/null \
                 || fail_and_cleanup "$1/grammars/gf-$fold"
         fi
@@ -409,7 +408,7 @@ function assert_tfcv_gf_files {
 # OUT:
 # - FILES: $TMP/$1/grammars/rparse-train-(0|..|9)/
 function assert_tfcv_rparse_files {
-    for fold in {0..$FOLDS}; do
+    for (( fold=1; fold<=$MAX_EVAL_FOLD; fold++ )); do
         if ! [ -f "$TMP/$1/grammars/rparse-train-$fold" ]; then
             $RPARSE -doTrain -train "$TMP/$1/splits/train-$fold.export" -headFinder negra -saveModel "$TMP/$1/grammars/rparse-train-$fold" &> /dev/null \
                 || fail_and_cleanup "$1/grammars/rparse-train-$fold"
