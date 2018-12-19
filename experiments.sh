@@ -86,8 +86,8 @@ function _gf_ {
 # - FILES: $TMP/<basename of $1>/results/discodop-$2-(times.tsv|predictions.export),
 #          $RESULTS/discodop-$2-<basename of $1>-(scores|times-(mean|median)).tsv
 function _discodop_ {
-    if ! (( $# == 2 )); then
-        echo "Missing pipeline argument"
+    if ! ( (( $# == 2 )) && [[ "$2" =~ ^(dop|ctf|lcfrs)$ ]] ); then
+        echo "Missing or wrong pipeline argument. Choose either of the following: \"dop\", \"ctf\" or \"lcfrs\"."
         fail_and_cleanup
     fi
     corpus=`basename $1`
@@ -118,34 +118,43 @@ function _discodop_ {
 }
 
 # IN:
-# - PARAMETERS: $1 – corpus file
+# - PARAMETERS: $1 – corpus file, $2 – grammar extraction mechanism (vanda|discodop)
 # - FILES: $1
 # OUT:
-# - FILES: $TMP/<basename of $1>/results/rustomata-(times.tsv|predictions.export),
-#          $RESULTS/rustomata-<basename of $1>-(scores|times-(mean|median)).tsv
+# - FILES: $TMP/<basename of $1>/results/rustomata-$2-(times.tsv|predictions.export),
+#          $RESULTS/rustomata-$2-<basename of $1>-(scores|times-(mean|median)).tsv
 function _rustomata_ {
+    if ! ( (( $# == 2 )) && [[ "$2" =~ ^(vanda|discodop)$ ]] ); then
+        echo "Missing or wrong grammar argument. Choose either of the following: \"vanda\" or \"discodop\"."
+        fail_and_cleanup
+    fi
     corpus=`basename $1`
     assert_folder_structure "$corpus"
     assert_corpus_files "$1" "$corpus"
-    assert_tfcv_rustomata_files "$corpus"
+    assert_tfcv_rustomata_files "$corpus" "$2"
 
-    echo -e "grammarsize\tlen\tgrammarsize_after_filtering\ttime\tresult\tcandidates" >> "$TMP/$corpus/results/rustomata-times.tsv"
+    echo -e "grammarsize\tlen\tgrammarsize_after_filtering\ttime\tresult\tcandidates" >> "$TMP/$corpus/results/rustomata-$2-times.tsv"
     for (( fold=1; fold<=$MAX_EVAL_FOLD; fold++ )); do
         echo "Processing fold $fold/$MAX_EVAL_FOLD... "
-        $RUSTOMATA csparsing parse "$TMP/$corpus/grammars/train-$fold.cs" --beam=$RUSTOMATA_D_BEAM --candidates=$RUSTOMATA_D_CANDIDATES --with-pos --with-lines --debug < "$TMP/$corpus/splits/test-$fold.sent" \
-            2> >(sed 's: :\t:g' >> "$TMP/$corpus/results/rustomata-times.tsv") \
-             | sed 's:_[[:digit:]]::' >> "$TMP/$corpus/results/rustomata-predictions.export" \
-            || fail_and_cleanup "results/rustomata-times.tsv" "results/rustomata-predictions.export"
-        cho "done."
+        $RUSTOMATA csparsing parse "$TMP/$corpus/grammars/train-$2-$fold.cs" --beam=$RUSTOMATA_D_BEAM --candidates=$RUSTOMATA_D_CANDIDATES --with-pos --with-lines --debug < "$TMP/$corpus/splits/test-$fold.sent" \
+            2> >(sed 's: :\t:g' >> "$TMP/$corpus/results/rustomata-$2-times.tsv") \
+             | sed 's:_[[:digit:]]::' >> "$TMP/$corpus/results/rustomata-$2-predictions.export" \
+            || fail_and_cleanup "results/rustomata-$2-times.tsv" "results/rustomata-$2-predictions.export"
+        echo "done."
     done
 
-    $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/rustomata-predictions.export" "$DISCODOP_EVAL" \
-        >> $RESULTS/rustomata-scores.txt \
+    if [[ "$2" =~ ^discodop$ ]]; then
+        mv "$TMP/$corpus/results/rustomata-$2-predictions.export" "$TMP/$corpus/results/rustomata-$2-predictions.export.bin"
+        $DISCO treetransforms --unbinarize "$TMP/$corpus/results/rustomata-$2-predictions.export.bin" > "$TMP/$corpus/results/rustomata-$2-predictions.export"
+    fi
+
+    $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/rustomata-$2-predictions.export" "$DISCODOP_EVAL" \
+        >> "$RESULTS/rustomata-$2-scores.txt" \
         || fail_and_cleanup
 
-    $PYTHON $SCRIPTS/averages.py --group=len --mean=time < "$TMP/$corpus/results/rustomata-times.tsv" >> "$RESULTS/rustomata-$corpus-times-mean.tsv" \
+    $PYTHON $SCRIPTS/averages.py --group=len --mean=time < "$TMP/$corpus/results/rustomata-$2-times.tsv" >> "$RESULTS/rustomata-$2-$corpus-times-mean.tsv" \
         || fail_and_cleanup
-    $PYTHON $SCRIPTS/averages.py --group=len --median=time < "$TMP/$corpus/results/rustomata-times.tsv" >> "$RESULTS/rustomata-$corpus-times-median.tsv" \
+    $PYTHON $SCRIPTS/averages.py --group=len --median=time < "$TMP/$corpus/results/rustomata-$2-times.tsv" >> "$RESULTS/rustomata-$2-$corpus-times-median.tsv" \
         || fail_and_cleanup
 }
 
@@ -163,7 +172,7 @@ function _rustomata_dev_ {
     corpus=`basename $1`
     assert_folder_structure "$corpus"
     assert_corpus_files "$1" "$corpus"
-    assert_tfcv_rustomata_files "$corpus" 0
+    assert_tfcv_rustomata_files "$corpus" "vanda"
 
     echo -e "beam\tcandidates\tlen\ttime" > $RESULTS/rustomata-ofcv-$corpus-times-mean.tsv
     echo -e "beam\tcandidates\tlen\ttime" > $RESULTS/rustomata-ofcv-$corpus-times-median.tsv
@@ -256,21 +265,30 @@ function assert_corpus_files {
 }
 
 # IN:
-# - PARAMETERS: $1 – corpus name, $2 – fold number (optional)
+# - PARAMETERS: $1 – corpus name, $2 – grammar extraction mechanism (vanda|discodop)
 # - FILES: $TMP/$1/splits/train-(0|…|9).export or $TMP/$1/splits/train-$2.export (if $2 is given)
 # OUT:
-# - FILES: $TMP/$1/grammars/train-(0|…|9).(vanda[.readable]|.cs) or $TMP/$1/grammars/train-$2.(vanda[.readable]|.cs)
+# - FILES: $TMP/$1/grammars/train-$2-(0|…|9).cs
 function assert_tfcv_rustomata_files {
-    if (( $# == 1 )); then
-        for (( fold=0; fold<=$MAX_EVAL_FOLD; fold++ )); do
-            assert_tfcv_rustomata_files "$1" "$fold"
-        done
-    else
-        if ! [ -f "$TMP/$1/grammars/train-$2.cs" ]; then
-            $VANDA pmcfg extract -p "$TMP/$1/grammars/train-$2.vanda" < "$TMP/$1/splits/train-$2.export" || fail_and_cleanup
-            $RUSTOMATA csparsing extract < "$TMP/$1/grammars/train-$2.vanda.readable" > "$TMP/$1/grammars/train-$2.cs" || fail_and_cleanup "$1/grammars/train-$2.cs"
+    if [[ "$2" =~ ^discodop$ ]]; then assert_tfcv_discodop_files "$1" "lcfrs"; fi
+
+    for (( fold=0; fold<=$MAX_EVAL_FOLD; fold++ )); do
+        if ! [ -f "$TMP/$1/grammars/train-$2-$fold.cs" ]; then
+            if [[ "$2" =~ ^discodop$ ]]; then
+                $DISCO grammar param "$TMP/$1/grammars/discodop-lcfrs-$fold.prm" "$TMP/$1/grammars/train-$fold.discodop" &> /dev/null \
+                    || fail_and_cleanup "$TMP/$1/grammars/train-$fold.discodop"
+                $RUSTOMATA csparsing extract -d "$TMP/$1/grammars/train-$fold.discodop/plcfrs.rules.gz" > "$TMP/$1/grammars/train-discodop-$fold.cs" \
+                    || fail_and_cleanup "$TMP/$1/grammars/train-discodop-$fold.cs"
+
+            elif [[ "$2" =~ ^vanda$ ]]; then
+                $VANDA pmcfg extract -p "$TMP/$1/grammars/train-$fold.vanda" < "$TMP/$1/splits/train-$fold.export" \
+                    || fail_and_cleanup
+                $RUSTOMATA csparsing extract < "$TMP/$1/grammars/train-$fold.vanda.readable" > "$TMP/$1/grammars/train-vanda-$fold.cs" \
+                    || fail_and_cleanup "$1/grammars/train-vanda-$fold.cs"
+
+            fi
         fi
-    fi
+    done
 }
 
 # IN:
@@ -279,7 +297,7 @@ function assert_tfcv_rustomata_files {
 # OUT:
 # - FILES: $TMP/$1/grammars/discodop-(dop|ctf|lcfrs)-(0|..|9).prm
 function assert_tfcv_discodop_files {
-    for (( fold=1; fold<=$MAX_EVAL_FOLD; fold++ )); do
+    for (( fold=0; fold<=$MAX_EVAL_FOLD; fold++ )); do
         if ! [ -f "$TMP/$1/grammars/discodop-$2-$fold.prm" ]; then
             sed "s:{TRAIN}:$TMP/$1/splits/train-$fold.export:" "templates/discodop-$2.prm" \
                 | sed "s:{TEST}:$TMP/$1/splits/test-$fold.export:" \
@@ -369,9 +387,8 @@ function _clean-all_ {
 
 if ! (( $# > 1 )) \
 || ! [[ "$1" =~ ^(rustomata|gf|rparse|discodop|rustomata_dev|clean(-all)?)$ ]] \
-|| ! [ -f "$2" ] \
-|| ( (( $# > 2 )) && ! [[ "$3" =~ ^(dop|ctf|lcfrs)$ ]] ); then
-    echo "use $0 (rustomata|gf|rparse|discodop|rustomata_dev|clean[-all]) <corpus> [<discodop pipeline>]";
+|| ! [ -f "$2" ]; then
+    echo "use $0 (rustomata|gf|rparse|discodop|rustomata_dev|clean[-all]) <corpus> [<additional parser argument>]";
 else
     if (( $# > 2 )); then _$1_ $2 $3; else _$1_ $2; fi
 fi

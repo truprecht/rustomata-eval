@@ -7,8 +7,8 @@ This bunch of scripts was used to evaluate the parse time and accuracy of [Rusto
 You need python3 for some scripts in the [scripts folder](./scripts/), disco-dop for the computation of the labelled f₁-measure and corpus postprocessing, and some common unix tools (bash, cat, sed, …).
 The paths for python3 and disco-dop are set in a configuration file for the use of local installations.
 Besides from that the evaluation of
-* Rustomata requires Rustomata, and [vanda-haskell](https://github.com/tud-fop/vanda-haskell),
-* grammatical framework requires gf and rparse, and
+* Rustomata requires Rustomata, and either [vanda-haskell](https://github.com/tud-fop/vanda-haskell) or disco-dop to induce a grammar,
+* grammatical framework requires gf and rparse ot induce a grammar, and
 * rparse only requires rparse
 to be installed.
 As for disco-dop, the paths of these binaries are set in a local configuration file.
@@ -20,11 +20,13 @@ As for disco-dop, the paths of these binaries are set in a local configuration f
     cp templates/experiments.conf.example experiments.conf
     $EDITOR experiments.conf
     ```
-* Run each experiment separately. Call [experiments.sh](./experiments.sh) with the parser as first argument and the corpus as second argument.
+* Run each experiment separately.
+  Call [experiments.sh](./experiments.sh) with the parser as first argument and the corpus as second argument.
     ```bash
-    bash experiments.sh rustomata ~/negra/negra-corpus.export
+    bash experiments.sh rparse ~/negra/negra-corpus.export
     ```
-* In the case of `discodop`, there are different parsing pipelines implemented. Each one is specified by passing either of `ctf`, `lcfrs` or `dop` additionally, e.g.
+* Some parsers may require a third argument, you can find more information about that in „supported parsers“.
+  In the case of `discodop`, there are different parsing pipelines implemented. Each one is specified by passing either of `ctf`, `lcfrs` or `dop` additionally, e.g.
     ```bash
     bash experiments.sh discodop ~/negra/negra-corpus.export lcfrs
     ```
@@ -33,7 +35,9 @@ As for disco-dop, the paths of these binaries are set in a local configuration f
 ### Supported parsers
 
 Currently, support for the following parsers is implemented:
-* Rustomata's Chomsky-Schützenberger parsing implementation via `rustomata`
+* Rustomata's Chomsky-Schützenberger parsing implementation via `rustomata` and one of the following arguments to specify the grammar extraction:
+    * `vanda` for a treebank grammar induced using vanda-haskell, or
+    * `discodop` for a binarized and markovized grammar using disco-dop.
 * disco-dop via `discodop` and one of the following pipeline arguments
     * `lcfrs` for the single lcfrs parser
     * `ctf` for the coarse-to-fine parsing pipeline without DOP (pcfg → plcfrs)
