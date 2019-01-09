@@ -1,5 +1,5 @@
-# Parses the output of rparse and prints the parse trees to stdout
-# and the parse time to stderr.
+# Parses the log output of rparse and prints the parse times for each sentence
+# to stdout.
 
 def format(l):
     return "%d\t%f\t%d" %(l[0], l[1], 1 if l[2] else 0)
@@ -26,6 +26,6 @@ if __name__ == "__main__":
             if e: c *= 10^(-float(e))
             last_parse[1] += c
         except: pass
-        if fail.match(line):
+        if fail.search(line):
             last_parse[2] = False
     if last_parse: print(format(last_parse))
