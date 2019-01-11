@@ -248,9 +248,7 @@ function assert_corpus_files {
     if (( $# != 2 )) || ! [ -d "$TMP/$2" ]; then return 1; fi
 
     if ! [ -f "$TMP/$2/low-punctuation.export" ]; then
-        echo "#FORMAT 4" > "$TMP/$2/low-punctuation.export"
-        $DISCO treetransforms --punct=move "$1" >> "$TMP/$2/low-punctuation.export" \
-            || fail_and_cleanup "$2/low-punctuation.export"
+        prepare-with-name "$1" "$2" "plain"
     fi
     if ! [ -f "$TMP/$2/splits/test-0.export" ]; then
         $PYTHON $SCRIPTS/tfcv.py "$TMP/$2/low-punctuation.export" --out-prefix="$TMP/$2/splits" --max-length=$MAXLENGTH --fix-bos=true
@@ -385,10 +383,65 @@ function _clean-all_ {
     if [ -d "$TMP/$corpus/splits" ]; then $TRASH "$TMP/$corpus/splits"; fi
 }
 
+function prepare-negra {
+    echo "#FORMAT 4" > "$TMP/$2/low-punctuation.export"
+    iconv -t UTF-8 -f ISO-8859-15 "$1" | $DISCO treetransforms --punct=move >> "$TMP/$2/low-punctuation.export"
+}
+
+function prepare-lassy {
+    touch "$TMP/$2/plain.export"
+    # collect all xml files in the lassy corpus directory, each one contains *one* tree,
+    # and transform them into export format
+    for folder in "$1/Treebank"/*/; do
+        for file in "$folder"*.xml; do
+            $DISCO treetransforms --inputfmt=alpino --outputfmt=export "$file" >> "$TMP/$2/plain.export"
+        done
+    done
+    echo "#FORMAT 4" > "$TMP/$2/low-punctuation.export"
+    $DISCO treetransforms --renumber "$TMP/$2/plain.export" | $DISCO treetransforms --punct=move >> "$TMP/$2/low-punctuation.export"
+}
+
+function prepare-with-name {
+    case "$3" in
+        "negra" | "lassy")
+            prepare-$3 $1 $2; ;;
+        "plain")
+            echo "#FORMAT 4" > "$TMP/$2/low-punctuation.export"
+            $DISCO treetransforms --punct=move "$1" >> "$TMP/$2/low-punctuation.export"; ;;
+        *)
+            exit 1; ;;
+    esac
+}
+
+function _prepare_ {
+    if (( $# < 2 )); then
+        if [[ "$1" =~ negra ]]; then type="negra";
+        elif [[ "$1" =~ lassy ]]; then type="lassy";
+        else exit 1; fi
+    else
+        type="$2";
+    fi
+    corpus=`basename $1`;
+    assert_folder_structure "$corpus"
+    prepare-with-name "$1" "$corpus" "$type";
+}
+
 if ! (( $# > 1 )) \
-|| ! [[ "$1" =~ ^(rustomata|gf|rparse|discodop|rustomata_dev|clean(-all)?)$ ]] \
+|| ! [[ "$1" =~ ^(rustomata|gf|rparse|discodop|rustomata_dev|clean(-all)?|prepare)$ ]] \
 || ! [ -f "$2" ]; then
-    echo "use $0 (rustomata|gf|rparse|discodop|rustomata_dev|clean[-all]) <corpus> [<additional parser argument>]";
+    echo -e "Use $0 (rustomata|gf|rparse|discodop|rustomata_dev) <corpus> [<additional parser argument>]";
+    echo -e "\tto perform a cross validation of the given parser using the given corpus. Some parsers"
+    echo -e "\t(rustomata and discodop for now) may require an additional argument.";
+    echo -e "";
+    echo -e "Use $0 clean[-all] <corpus>";
+    echo -e "\tto clean the temporary folder from intermediate results of experiments using the given corpus."
+    echo -e "\tclean-all will even delete prepared corpora and extracted grammars."
+    echo -e "";
+    echo -e "Use $0 prepare <corpus> [<corpus type>]";
+    echo -e "\tto pepare the given corpus for the parsing process. This is currently implemented for"
+    echo -e "\tcorpora in NeGra and Lassy formats. If the given filename does neither contain 'negra'"
+    echo -e "\tnor 'lassy', the copus type type shall be included explicitly. Use the corpus type"
+    echo -e "\t'plain' to use the given file in export format as it is."
 else
     if (( $# > 2 )); then _$1_ $2 $3; else _$1_ $2; fi
 fi
