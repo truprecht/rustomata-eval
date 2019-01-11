@@ -277,7 +277,9 @@ function assert_tfcv_rustomata_files {
             if [[ "$2" =~ ^discodop$ ]]; then
                 $DISCO grammar param "$TMP/$1/grammars/discodop-lcfrs-$fold.prm" "$TMP/$1/grammars/train-$fold.discodop" &> /dev/null \
                     || fail_and_cleanup "$TMP/$1/grammars/train-$fold.discodop"
-                $RUSTOMATA csparsing extract -d "$TMP/$1/grammars/train-$fold.discodop/plcfrs.rules.gz" > "$TMP/$1/grammars/train-discodop-$fold.cs" \
+                # begin:  replace the PoS-Tag $[ by $(, as used in the NeGra-Corpus
+                gunzip -c "$TMP/$1/grammars/train-$fold.discodop/plcfrs.rules.gz" | sed 's/\$\[/\$\(/g' | gzip > "$TMP/$1/grammars/train-$fold.discodop/plcfrs.rules-fixed.gz"
+                $RUSTOMATA csparsing extract -d "$TMP/$1/grammars/train-$fold.discodop/plcfrs.rules-fixed.gz" > "$TMP/$1/grammars/train-discodop-$fold.cs" \
                     || fail_and_cleanup "$TMP/$1/grammars/train-discodop-$fold.cs"
 
             elif [[ "$2" =~ ^vanda$ ]]; then
