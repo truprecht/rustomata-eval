@@ -2,7 +2,7 @@
 
 import re
 
-terminal_escapes = [ (re.compile(pat), r) for (pat, r) in [ ("^MDASH$", "--"), ("DASH", "-"), ("SQ", "'"), ("DQ", "\""), ("BACKSLASH", "\\"), ("SLASH", "/"), ("^COMMA$", ","), ("^PUNCT$", "."), ("^LBR$", "("), ("^RBR$", ")") ] ]
+terminal_escapes = [ (re.compile(pat), r) for (pat, r) in [ ("^MDASH$", "--"), ("DASH", "-"), ("SQ", "'"), ("DQ", "\""), ("BACKSLASH", "\\"), ("SLASH", "/"), ("^COMMA$", ","), ("PUNCT", "."), ("^LBR$", "("), ("^RBR$", ")") ] ]
 def gf_unescape_terminal(word):
     for (regex, replacement) in terminal_escapes:
         word = regex.sub(lambda _: replacement, word)
