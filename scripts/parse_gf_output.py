@@ -86,6 +86,7 @@ if __name__ == "__main__":
     assert len(argv) == 2, "use %s <sentence file>" %argv[0]
 
     time = re.compile(r"""^(\d+) msec$""")
+    tree = re.compile(r"""^graph \{""")
     sentence = re.compile(r"""^(\d+)\s+(.*)$""") 
     word_pos = re.compile(r"""([^\s]+)/([^\s/]+)""")
     sentences = []
@@ -102,12 +103,13 @@ if __name__ == "__main__":
     for line in stdin:
         if not line.strip(): continue
         timem = time.match(line)
+        treem = tree.match(line)
         if timem:
             if not last_passed: print_noparse(sentences[index], ids[index])
             eprint( "%d\t%s\t%d" %(len(sentences[index]), timem.group(1), 1 if last_passed else 0) )
             index += 1
             last_passed = False
-        else:
+        elif treem:
             print("#BOS {}".format(ids[index]))
             print(gfdot_to_negra(line.split("%;;%")))
             print("#EOS {}".format(ids[index]))

@@ -210,20 +210,23 @@ function _rustomata_dev_ {
 # OUT:
 # - STDOUT: gf output and output in the same form as gf if a timeout occurred
 function gf_with_timeout {
-    outputs=""
     while read sentence || [ -n "$sentence" ]; do
+        # the following line echos a gf command pipeline which
+        # * parses the sentence,
+        # * visualizes the parse trees (prints it in dot format), and
+        # * calls a python script that takes only the first tree
+        # into grammatical framework wrapped in `timeout`.
         sentenceoutput="$(echo "p \"$sentence\" | vp | sp -command=\"$PYTHON $SCRIPTS/take_first_gf_tree.py\"" | timeout $GF_TIMEOUT $GF $1)"
-        ec=$?
+        ec=$?                           # handle errorcode of `timeout`
         if (( $ec == 124 )); then       # timeout
-            outputs="$outputs\nTIMEOUT>\n${GF_TIMEOUT}000 msec"
+            echo "TIMEOUT>"
+            echo "${GF_TIMEOUT}000 msec"
         elif (( $ec != 0 )); then       # some other error
             return $ec
         else                            # no error, propagate output
-            lines=$(echo "$sentenceoutput" | grep -P -A1 '^[^>]+>' | head -n2 | sed 's:[^>]\+>[[:space:]]*::')
-            outputs="$outputs\n$lines"
+            echo "$sentenceoutput" | grep -P -A1 '^[^>]+>' | head -n2 | sed 's:[^>]\+>[[:space:]]*::'
         fi
     done <"$2"
-    echo -e "$outputs"
 }
 
 
