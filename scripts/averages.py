@@ -35,15 +35,21 @@ if __name__ == "__main__":
     opts = options(argv)
     
     table = p.read_table(stdin, index_col = opts["group"])
+    for (_, col) in opts["ops"]:
+        if "time" in col:
+            table[col] = p.to_numeric(p.to_timedelta(table[col]))
+
     result = p.DataFrame(index = p.Index(np.unique(table.index), name=opts["group"]))
     table = table.groupby(opts["group"])
     
     for (op, col) in opts["ops"]:
         if op == "sum":
-            result = result.join(p.DataFrame(table[col].sum()), rsuffix="_sum")
+            collapsed = table[col].sum()
         elif op == "mean":
-            result = result.join(p.DataFrame(table[col].mean()), rsuffix="_mean")
+            collapsed = table[col].mean()
         elif op == "median":
-            result = result.join(p.DataFrame(table[col].median()), rsuffix="_median")
-
+            collapsed = table[col].median()
+        if "time" in col:
+            collapsed = collapsed / 1000000
+        result = p.concat([result, collapsed], axis=1)
     print(result.to_csv(sep="\t"))

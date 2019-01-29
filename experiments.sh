@@ -108,7 +108,7 @@ function _discodop_ {
     done
 
     $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/discodop-$2-predictions.export" "$DISCODOP_EVAL" \
-         > "$RESULTS/discodop-$2-tfcv-scores.txt" \
+         > "$RESULTS/discodop-$2-$corpus-scores.txt" \
         || fail_and_cleanup
 
     $PYTHON $SCRIPTS/averages.py --group=len --mean=elapsedtime < "$TMP/$corpus/results/discodop-$2-times.tsv" > "$RESULTS/discodop-$2-$corpus-times-mean.tsv" \
@@ -136,7 +136,7 @@ function _rustomata_ {
     echo -e "grammarsize\tlen\tgrammarsize_after_filtering\ttime\tresult\tcandidates" >> "$TMP/$corpus/results/rustomata-$2-times.tsv"
     for (( fold=1; fold<=$MAX_EVAL_FOLD; fold++ )); do
         echo "Processing fold $fold/$MAX_EVAL_FOLD... "
-        $RUSTOMATA csparsing parse "$TMP/$corpus/grammars/train-$2-$fold.cs" --beam=$RUSTOMATA_D_BEAM --candidates=$RUSTOMATA_D_CANDIDATES --with-pos --with-lines --debug < "$TMP/$corpus/splits/test-$fold.sent" \
+        $RUSTOMATA csparsing parse "$TMP/$corpus/grammars/train-$2-$fold.cs" --beam="$RUSTOMATA_D_BEAM" --candidates="$RUSTOMATA_D_CANDIDATES" --threshold="$RUSTOMATA_D_THRESHOLD" --with-pos --with-lines --debug < "$TMP/$corpus/splits/test-$fold.sent" \
             2> >(sed 's: :\t:g' >> "$TMP/$corpus/results/rustomata-$2-times.tsv") \
              | sed 's:_[[:digit:]]::' >> "$TMP/$corpus/results/rustomata-$2-predictions.export" \
             || fail_and_cleanup "results/rustomata-$2-times.tsv" "results/rustomata-$2-predictions.export"
@@ -149,7 +149,7 @@ function _rustomata_ {
     fi
 
     $DISCO eval "$TMP/$corpus/splits/test-1-9.export" "$TMP/$corpus/results/rustomata-$2-predictions.export" "$DISCODOP_EVAL" \
-        >> "$RESULTS/rustomata-$2-scores.txt" \
+        >> "$RESULTS/rustomata-$2-$corpus-scores.txt" \
         || fail_and_cleanup
 
     $PYTHON $SCRIPTS/averages.py --group=len --mean=time < "$TMP/$corpus/results/rustomata-$2-times.tsv" >> "$RESULTS/rustomata-$2-$corpus-times-mean.tsv" \
@@ -174,31 +174,33 @@ function _rustomata_dev_ {
     assert_corpus_files "$1" "$corpus"
     assert_tfcv_rustomata_files "$corpus" "vanda"
 
-    echo -e "beam\tcandidates\tlen\ttime" > $RESULTS/rustomata-ofcv-$corpus-times-mean.tsv
-    echo -e "beam\tcandidates\tlen\ttime" > $RESULTS/rustomata-ofcv-$corpus-times-median.tsv
+    echo -e "beam\tthreshold\tcandidates\tlen\ttime" > $RESULTS/rustomata-ofcv-$corpus-times-mean.tsv
+    echo -e "beam\tthreshold\tcandidates\tlen\ttime" > $RESULTS/rustomata-ofcv-$corpus-times-median.tsv
     for beam in ${RUSTOMATA_BEAMS[*]}; do
-        for cans in ${RUSTOMATA_CANDIDATES[*]}; do
-            echo -e "grammarsize\tlen\tgrammarsize_after_filtering\ttime\tresult\tcandidates" > "$TMP/$corpus/results/rustomata-ofcv-$beam-$cans-times.tsv"
-            $RUSTOMATA csparsing parse $TMP/$corpus/grammars/train-0.cs --beam=$beam --candidates=$cans --with-pos --with-lines --debug < $TMP/$corpus/splits/test-0.sent \
-                2> >(sed 's: :\t:g' >> "$TMP/$corpus/results/rustomata-ofcv-$beam-$cans-times.tsv") \
-                 | sed 's:_[[:digit:]]::' > "$TMP/$corpus/results/rustomata-ofcv-$beam-$cans-predictions.export" \
-                || fail_and_cleanup "results/rustomata-ofcv-$beam-$cans-times.csv" "results/rustomata-ofcv-$beam-$cans-predictions.export"
+        for thresh in ${RUSTOMATA_THRESHOLDS[*]}; do
+            for cans in ${RUSTOMATA_CANDIDATES[*]}; do
+                echo -e "grammarsize\tlen\ttime\tresult\tcandidates" > "$TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-times.tsv"
+                $RUSTOMATA csparsing parse "$TMP/$corpus/grammars/train-vanda-0.cs" --beam=$beam --candidates=$cans --threshold=$thresh --with-pos --with-lines --debug < $TMP/$corpus/splits/test-0.sent \
+                    2> >(sed 's: :\t:g' | sed 's:µs:us:' >> "$TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-times.tsv") \
+                    | sed 's:_[[:digit:]]::' > "$TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-predictions.export" \
+                    || fail_and_cleanup "results/rustomata-ofcv-$beam-$thresh-$cans-times.csv" "results/rustomata-ofcv-$beam-$thresh-$cans-predictions.export"
 
-            echo -ne "$beam\t$cans\t" >> $RESULTS/rustomata-ofcv-$corpus-scores.tsv
-            $DISCO eval $TMP/$corpus/splits/test-0.export $TMP/$corpus/results/rustomata-ofcv-$beam-$cans-predictions.export "$DISCODOP_EVAL" \
-                 | grep -oP "labeled (precision|recall|f-measure):\s+\K\d+.\d+" \
-                 | awk -vRS="\n" -vORS="\t" '1' >> $RESULTS/rustomata-ofcv-$corpus-scores.tsv \
-                || fail_and_cleanup
-            echo "" >> $RESULTS/rustomata-ofcv-$corpus-scores.tsv
+                echo -ne "$beam\t$thresh\t$cans\t" >> $RESULTS/rustomata-ofcv-$corpus-scores.tsv
+                $DISCO eval $TMP/$corpus/splits/test-0.export $TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-predictions.export "$DISCODOP_EVAL" \
+                    | grep -oP "labeled (precision|recall|f-measure):\s+\K\d+.\d+" \
+                    | awk -vRS="\n" -vORS="\t" '1' >> $RESULTS/rustomata-ofcv-$corpus-scores.tsv \
+                    || fail_and_cleanup
+                echo "" >> $RESULTS/rustomata-ofcv-$corpus-scores.tsv
 
-            $PYTHON $SCRIPTS/averages.py --group=len --mean=time < $TMP/$corpus/results/rustomata-ofcv-$beam-$cans-times.tsv \
-                 | tail -n+2 | head -n-2 \
-                 | sed "s:^:$beam\t$cans\t:" >> $RESULTS/rustomata-ofcv-$corpus-times-mean.tsv \
-                || fail_and_cleanup
-            $PYTHON $SCRIPTS/averages.py --group=len --median=time < $TMP/$corpus/results/rustomata-ofcv-$beam-$cans-times.tsv \
-                 | tail -n+2 | head -n-2 \
-                 | sed "s:^:$beam\t$cans\t:" >> $RESULTS/rustomata-ofcv-$corpus-times-median.tsv \
-                || fail_and_cleanup
+                $PYTHON $SCRIPTS/averages.py --group=len --mean=time < $TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-times.tsv \
+                    | tail -n+2 | head -n-2 \
+                    | sed "s:^:$beam\t$thresh\t$cans\t:" >> $RESULTS/rustomata-ofcv-$corpus-times-mean.tsv \
+                    || fail_and_cleanup
+                $PYTHON $SCRIPTS/averages.py --group=len --median=time < $TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-times.tsv \
+                    | tail -n+2 | head -n-2 \
+                    | sed "s:^:$beam\t$thresh\t$cans\t:" >> $RESULTS/rustomata-ofcv-$corpus-times-median.tsv \
+                    || fail_and_cleanup
+            done
         done
     done
 }
