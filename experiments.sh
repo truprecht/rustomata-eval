@@ -133,11 +133,11 @@ function _rustomata_ {
     assert_corpus_files "$1" "$corpus"
     assert_tfcv_rustomata_files "$corpus" "$2"
 
-    echo -e "grammarsize\tlen\tgrammarsize_after_filtering\ttime\tresult\tcandidates" >> "$TMP/$corpus/results/rustomata-$2-times.tsv"
+    echo -e "grammarsize\tlen\ttime\tresult\tcandidates" >> "$TMP/$corpus/results/rustomata-$2-times.tsv"
     for (( fold=1; fold<=$MAX_EVAL_FOLD; fold++ )); do
         echo "Processing fold $fold/$MAX_EVAL_FOLD... "
         $RUSTOMATA csparsing parse "$TMP/$corpus/grammars/train-$2-$fold.cs" --beam="$RUSTOMATA_D_BEAM" --candidates="$RUSTOMATA_D_CANDIDATES" --threshold="$RUSTOMATA_D_THRESHOLD" --with-pos --with-lines --debug < "$TMP/$corpus/splits/test-$fold.sent" \
-            2> >(sed 's: :\t:g' >> "$TMP/$corpus/results/rustomata-$2-times.tsv") \
+            2> >(sed 's: :\t:g' | sed 's:µs:us:' >> "$TMP/$corpus/results/rustomata-$2-times.tsv") \
              | sed 's:_[[:digit:]]::' >> "$TMP/$corpus/results/rustomata-$2-predictions.export" \
             || fail_and_cleanup "results/rustomata-$2-times.tsv" "results/rustomata-$2-predictions.export"
         echo "done."
@@ -172,7 +172,7 @@ function _rustomata_dev_ {
     corpus=`basename $1`
     assert_folder_structure "$corpus"
     assert_corpus_files "$1" "$corpus"
-    assert_tfcv_rustomata_files "$corpus" "vanda"
+    assert_tfcv_rustomata_files "$corpus" "discodop"
 
     echo -e "beam\tthreshold\tcandidates\tlen\ttime" > $RESULTS/rustomata-ofcv-$corpus-times-mean.tsv
     echo -e "beam\tthreshold\tcandidates\tlen\ttime" > $RESULTS/rustomata-ofcv-$corpus-times-median.tsv
@@ -180,10 +180,13 @@ function _rustomata_dev_ {
         for thresh in ${RUSTOMATA_THRESHOLDS[*]}; do
             for cans in ${RUSTOMATA_CANDIDATES[*]}; do
                 echo -e "grammarsize\tlen\ttime\tresult\tcandidates" > "$TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-times.tsv"
-                $RUSTOMATA csparsing parse "$TMP/$corpus/grammars/train-vanda-0.cs" --beam=$beam --candidates=$cans --threshold=$thresh --with-pos --with-lines --debug < $TMP/$corpus/splits/test-0.sent \
+                $RUSTOMATA csparsing parse "$TMP/$corpus/grammars/train-discodop-0.cs" --beam=$beam --candidates=$cans --threshold=$thresh --with-pos --with-lines --debug < $TMP/$corpus/splits/test-0.sent \
                     2> >(sed 's: :\t:g' | sed 's:µs:us:' >> "$TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-times.tsv") \
                     | sed 's:_[[:digit:]]::' > "$TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-predictions.export" \
                     || fail_and_cleanup "results/rustomata-ofcv-$beam-$thresh-$cans-times.csv" "results/rustomata-ofcv-$beam-$thresh-$cans-predictions.export"
+
+                mv "$TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-predictions.export" "$TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-predictions.export.bin"
+                $DISCO treetransforms --unbinarize "$TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-predictions.export.bin" > "$TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-predictions.export"
 
                 echo -ne "$beam\t$thresh\t$cans\t" >> $RESULTS/rustomata-ofcv-$corpus-scores.tsv
                 $DISCO eval $TMP/$corpus/splits/test-0.export $TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-predictions.export "$DISCODOP_EVAL" \
@@ -284,7 +287,7 @@ function assert_tfcv_rustomata_files {
                     || fail_and_cleanup "$TMP/$1/grammars/train-$fold.discodop"
                 # begin:  replace the PoS-Tag $[ by $(, as used in the NeGra-Corpus
                 gunzip -c "$TMP/$1/grammars/train-$fold.discodop/plcfrs.rules.gz" | sed 's/\$\[/\$\(/g' | gzip > "$TMP/$1/grammars/train-$fold.discodop/plcfrs.rules-fixed.gz"
-                $RUSTOMATA csparsing extract -d "$TMP/$1/grammars/train-$fold.discodop/plcfrs.rules-fixed.gz" > "$TMP/$1/grammars/train-discodop-$fold.cs" \
+                $RUSTOMATA csparsing extract -s "$MAXLENGTH" -d "$TMP/$1/grammars/train-$fold.discodop/plcfrs.rules-fixed.gz" > "$TMP/$1/grammars/train-discodop-$fold.cs" \
                     || fail_and_cleanup "$TMP/$1/grammars/train-discodop-$fold.cs"
 
             elif [[ "$2" =~ ^vanda$ ]]; then
