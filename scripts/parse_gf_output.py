@@ -46,7 +46,7 @@ def gfdot_to_negra(s_):
             if label == 'VROOT1':
                 tree.add_to_root(node_id)
             continue
-        match = re.search(r'^(n\d+) -- (n\d+);$', line)
+        match = re.search(r'^(n\d+) -- (n\d+) \[style = "(?:dashed|solid)"\]$', line)
         if match:
             (parent, child) = match.group(1, 2)
             tree.add_child(parent, child)
@@ -85,7 +85,7 @@ if __name__ == "__main__":
 
     assert len(argv) == 2, "use %s <sentence file>" %argv[0]
 
-    time = re.compile(r"""^(\d+) msec$""")
+    time = re.compile(r"""^(\d+ ms)ec$""")
     tree = re.compile(r"""^graph \{""")
     sentence = re.compile(r"""^(\d+)\s+(.*)$""") 
     word_pos = re.compile(r"""([^\s]+)/([^\s/]+)""")

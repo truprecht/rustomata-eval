@@ -26,7 +26,7 @@ VANDA="$HOME/.local/bin/vanda"
 ## the rparse binary
 RPARSE="java -jar $HOME/rparse/rparse.jar"
 ## the grammatical framework binary
-GF="$HOME/.local/bin/gf"
+GF="$HOME/.local/bin/gf -cshell"
 ### the disco-dop binary
 DISCO="discodop"
 ## the python3 binary
