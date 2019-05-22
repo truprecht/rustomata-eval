@@ -36,9 +36,12 @@ PYTHON="python"
 ## default number of coarse parse candidates that rustomata considers
 RUSTOMATA_D_CANDIDATES="10000"
 ## default beam width in rustomata
-RUSTOMATA_D_BEAM="∞"
+RUSTOMATA_D_BEAM="100"
+RUSTOMATA_D_THRESHOLD="0.01"
 ## set of beam widths considered in rustomata's grid search
-RUSTOMATA_BEAMS=("1000" "10000" "100000" "∞")
+RUSTOMATA_BEAMS=("1" "10" "100" "1000")
+## set of probability threasholds considered in rustomata's grid search
+RUSTOMATA_THRESHOLDS=("0.1" "0.01" "0.001" "0")
 ## set of candidate numbers considered in rustomata's grid search
 RUSTOMATA_CANDIDATES=("1" "10" "100" "1000" "10000" "100000")
 ## timeout for rparse in seconds
