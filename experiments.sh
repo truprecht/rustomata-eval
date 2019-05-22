@@ -95,6 +95,12 @@ function _discodop_ {
     assert_corpus_files "$1" "$corpus"
     assert_tfcv_discodop_files "$corpus" "$2"
 
+    if [[ "$2" =~ dop ]]; then
+        prediction_filename="dop.export"
+    else
+        prediction_filename="plcfrs.export"
+    fi
+
     echo -e "sentid\tlen\telapsedtime" > "$TMP/$corpus/results/discodop-$2-times.tsv"
     for (( fold=1; fold<=$MAX_EVAL_FOLD; fold++ )); do
         echo "Processing fold $fold/$MAX_EVAL_FOLD... "
@@ -103,7 +109,9 @@ function _discodop_ {
 
         $PYTHON $SCRIPTS/averages.py --group=sentid --mean=len --sum=elapsedtime < "$TMP/$corpus/grammars/discodop-$2-$fold/stats.tsv" \
             | tail -n+2 >> "$TMP/$corpus/results/discodop-$2-times.tsv"
-        cat "$TMP/$corpus/grammars/discodop-$2-$fold/dop.export" >> "$TMP/$corpus/results/discodop-$2-predictions.export"
+        cat "$TMP/$corpus/grammars/discodop-$2-$fold/$prediction_filename" >> "$TMP/$corpus/results/discodop-$2-predictions.export"
+        $TRASH "$TMP/$corpus/grammars/discodop-$2-$fold/"
+
         echo "done."
     done
 
@@ -192,11 +200,11 @@ function _rustomata_dev_ {
             echo "" >> $RESULTS/rustomata-ofcv-$corpus-scores.tsv
 
             $PYTHON $SCRIPTS/averages.py --group=len --mean=time < $TMP/$corpus/results/rustomata-ofcv-$beam-$cans-times.tsv \
-                 | tail -n+2 | head -n-2 \
+                 | tail -n+2 \
                  | sed "s:^:$beam\t$cans\t:" >> $RESULTS/rustomata-ofcv-$corpus-times-mean.tsv \
                 || fail_and_cleanup
             $PYTHON $SCRIPTS/averages.py --group=len --median=time < $TMP/$corpus/results/rustomata-ofcv-$beam-$cans-times.tsv \
-                 | tail -n+2 | head -n-2 \
+                 | tail -n+2 \
                  | sed "s:^:$beam\t$cans\t:" >> $RESULTS/rustomata-ofcv-$corpus-times-median.tsv \
                 || fail_and_cleanup
         done
