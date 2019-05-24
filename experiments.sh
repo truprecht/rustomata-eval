@@ -182,35 +182,39 @@ function _rustomata_dev_ {
     assert_corpus_files "$1" "$corpus"
     assert_tfcv_rustomata_files "$corpus" "discodop"
 
-    echo -e "beam\tthreshold\tcandidates\tlen\ttime" > $RESULTS/rustomata-ofcv-$corpus-times-mean.tsv
-    echo -e "beam\tthreshold\tcandidates\tlen\ttime" > $RESULTS/rustomata-ofcv-$corpus-times-median.tsv
+    echo -e "beam\tthreshold\tcandidates\tfallback\tlen\ttime" > $RESULTS/rustomata-ofcv-$corpus-times-mean.tsv
+    echo -e "beam\tthreshold\tcandidates\tfallback\tlen\ttime" > $RESULTS/rustomata-ofcv-$corpus-times-median.tsv
+    echo -ne "beam\tthreshold\tcandidates\tfallback\trecall\tprecision\tfscore" >> $RESULTS/rustomata-ofcv-$corpus-scores.tsv
     for beam in ${RUSTOMATA_BEAMS[*]}; do
         for thresh in ${RUSTOMATA_THRESHOLDS[*]}; do
             for cans in ${RUSTOMATA_CANDIDATES[*]}; do
-                echo -e "grammarsize\tlen\ttime\tresult\tcandidates" > "$TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-times.tsv"
-                $RUSTOMATA csparsing parse "$TMP/$corpus/grammars/train-discodop-0.cs" --beam=$beam --candidates=$cans --threshold=$thresh --with-pos --with-lines --debug < $TMP/$corpus/splits/test-0.sent \
-                    2> >(sed 's: :\t:g' | sed 's:µs:us:' >> "$TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-times.tsv") \
-                    | sed 's:_[[:digit:]]::' > "$TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-predictions.export" \
-                    || fail_and_cleanup "results/rustomata-ofcv-$beam-$thresh-$cans-times.csv" "results/rustomata-ofcv-$beam-$thresh-$cans-predictions.export"
+                for flbpn in ${RUSTOMATA_FALLBACK_PENALTIES}; do
+                    echo -e "grammarsize\tlen\ttime\tresult\tcandidates" > "$TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-$flbpn-times.tsv"
+                    echo "$RUSTOMATA csparsing parse $TMP/$corpus/grammars/train-discodop-0.cs --beam=$beam --candidates=$cans --threshold=$thresh --with-fallback=$flbpn --with-pos --with-lines --debug < $TMP/$corpus/splits/test-0.sent"
+                    $RUSTOMATA csparsing parse "$TMP/$corpus/grammars/train-discodop-0.cs" --beam=$beam --candidates=$cans --threshold=$thresh --with-fallback=$flbpn --with-pos --with-lines --debug < $TMP/$corpus/splits/test-0.sent \
+                        2> >(sed 's: :\t:g' | sed 's:µs:us:' >> "$TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-$flbpn-times.tsv") \
+                        | sed 's:_[[:digit:]]::' > "$TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-$flbpn-predictions.export" \
+                        || fail_and_cleanup "results/rustomata-ofcv-$beam-$thresh-$cans-$flbpn-times.csv" "results/rustomata-ofcv-$beam-$thresh-$cans-$flbpn-predictions.export"
 
-                mv "$TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-predictions.export" "$TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-predictions.export.bin"
-                $DISCO treetransforms --unbinarize "$TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-predictions.export.bin" > "$TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-predictions.export"
+                    mv "$TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-$flbpn-predictions.export" "$TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-$flbpn-predictions.export.bin"
+                    $DISCO treetransforms --unbinarize "$TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-$flbpn-predictions.export.bin" > "$TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-$flbpn-predictions.export"
 
-                echo -ne "$beam\t$thresh\t$cans\t" >> $RESULTS/rustomata-ofcv-$corpus-scores.tsv
-                $DISCO eval $TMP/$corpus/splits/test-0.export $TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-predictions.export "$DISCODOP_EVAL" \
-                    | grep -oP "labeled (precision|recall|f-measure):\s+\K\d+.\d+" \
-                    | awk -vRS="\n" -vORS="\t" '1' >> $RESULTS/rustomata-ofcv-$corpus-scores.tsv \
-                    || fail_and_cleanup
-                echo "" >> $RESULTS/rustomata-ofcv-$corpus-scores.tsv
+                    echo -ne "$beam\t$thresh\t$cans\t$flbpn\t" >> $RESULTS/rustomata-ofcv-$corpus-scores.tsv
+                    $DISCO eval $TMP/$corpus/splits/test-0.export $TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-$flbpn-predictions.export "$DISCODOP_EVAL" \
+                        | grep -oP "labeled (precision|recall|f-measure):\s+\K\d+.\d+" \
+                        | awk -vRS="\n" -vORS="\t" '1' >> $RESULTS/rustomata-ofcv-$corpus-scores.tsv \
+                        || fail_and_cleanup
+                    echo "" >> $RESULTS/rustomata-ofcv-$corpus-scores.tsv
 
-                $PYTHON $SCRIPTS/averages.py --group=len --mean=time < $TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-times.tsv \
-                    | tail -n+2 \
-                    | sed "s:^:$beam\t$thresh\t$cans\t:" >> $RESULTS/rustomata-ofcv-$corpus-times-mean.tsv \
-                    || fail_and_cleanup
-                $PYTHON $SCRIPTS/averages.py --group=len --median=time < $TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-times.tsv \
-                    | tail -n+2 \
-                    | sed "s:^:$beam\t$thresh\t$cans\t:" >> $RESULTS/rustomata-ofcv-$corpus-times-median.tsv \
-                    || fail_and_cleanup
+                    $PYTHON $SCRIPTS/averages.py --group=len --mean=time < $TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-$flbpn-times.tsv \
+                        | tail -n+2 | head -n-1 \
+                        | sed "s:^:$beam\t$thresh\t$cans\t$flbpn\t:" >> $RESULTS/rustomata-ofcv-$corpus-times-mean.tsv \
+                        || fail_and_cleanup
+                    $PYTHON $SCRIPTS/averages.py --group=len --median=time < $TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-$flbpn-times.tsv \
+                        | tail -n+2 | head -n-1 \
+                        | sed "s:^:$beam\t$thresh\t$cans\t$flbpn\t:" >> $RESULTS/rustomata-ofcv-$corpus-times-median.tsv \
+                        || fail_and_cleanup
+                done
             done
         done
     done
