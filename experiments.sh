@@ -188,7 +188,7 @@ function _rustomata_dev_ {
     for beam in ${RUSTOMATA_BEAMS[*]}; do
         for thresh in ${RUSTOMATA_THRESHOLDS[*]}; do
             for cans in ${RUSTOMATA_CANDIDATES[*]}; do
-                for flbpn in ${RUSTOMATA_FALLBACK_PENALTIES}; do
+                for flbpn in ${RUSTOMATA_FALLBACK_PENALTIES[*]}; do
                     echo -e "grammarsize\tlen\ttime\tresult\tcandidates" > "$TMP/$corpus/results/rustomata-ofcv-$beam-$thresh-$cans-$flbpn-times.tsv"
                     echo "$RUSTOMATA csparsing parse $TMP/$corpus/grammars/train-discodop-0.cs --beam=$beam --candidates=$cans --threshold=$thresh --with-fallback=$flbpn --with-pos --with-lines --debug < $TMP/$corpus/splits/test-0.sent"
                     $RUSTOMATA csparsing parse "$TMP/$corpus/grammars/train-discodop-0.cs" --beam=$beam --candidates=$cans --threshold=$thresh --with-fallback=$flbpn --with-pos --with-lines --debug < $TMP/$corpus/splits/test-0.sent \
